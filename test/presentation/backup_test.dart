@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -62,6 +63,19 @@ void main() {
     final plain = await app.cipher.decrypt(bytes, 'long enough');
     expect(ascii.decode(plain.sublist(0, 15)), 'SQLite format 3');
     expect(Directory(app.files.dir).listSync().where((f) => f.path.endsWith('.sqlite')), isEmpty);
+  });
+
+  testWidgets('an export first removes earlier exports, including the share copy', (tester) async {
+    final app = await pumpApp(tester);
+    final shareCopy = File('${app.files.dir}/share_plus/wealthtracker-2026-09-01.sqlite')..createSync(recursive: true);
+    final oldCsv = File('${app.files.dir}/wealthtracker-2026-09-01.csv')..createSync();
+
+    await openBackupItem(tester, 'Export backup');
+    await exportPlain(tester);
+
+    expect(shareCopy.existsSync(), isFalse);
+    expect(oldCsv.existsSync(), isFalse);
+    expect(File(app.files.shared.single).existsSync(), isTrue);
   });
 
   testWidgets('cancelling the export shares nothing', (tester) async {
@@ -211,8 +225,15 @@ void main() {
     await openBackupItem(tester, 'Import CSV');
     expect(find.text('1 transactions ready'), findsOneWidget);
     expect(find.text('Expense: Pets'), findsOneWidget);
-    await tapAndSettle(tester, find.text('Import'));
+    app.backup.holdImport = Completer();
+    await tester.tap(find.text('Import'));
+    await tester.pump();
+    expect(find.text('Importing transactions…'), findsOneWidget);
+    app.backup.holdImport!.complete();
     await settleWork(tester);
+
+    expect(find.text('Importing transactions…'), findsNothing);
+    expect(find.text('1 transactions ready'), findsNothing);
 
     final saved = await tester.runAsync(() => app.repos.transactions.find(const TransactionQuery()));
     expect(saved!.single.note, 'Cat food');

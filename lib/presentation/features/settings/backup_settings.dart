@@ -26,14 +26,9 @@ class BackupSettings extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     void tell(String message) => messenger.showSnackBar(SnackBar(content: Text(message)));
 
-    // Earlier exports stay in the temp folder after sharing, some of them
-    // unencrypted, so each export removes them first.
     Future<String> exportPath(String extension) async {
-      final dir = await files.tempDirectory();
-      for (final old in Directory(dir).listSync().whereType<File>()) {
-        if (p.basename(old.path).startsWith('wealthtracker-')) old.deleteSync();
-      }
-      return p.join(dir, 'wealthtracker-${dateKey(ref.read(clockProvider)())}.$extension');
+      await files.clearExports();
+      return p.join(await files.tempDirectory(), '$exportFilePrefix${dateKey(ref.read(clockProvider)())}.$extension');
     }
 
     return SettingsSection(
@@ -346,7 +341,8 @@ class _CsvPreviewScreen extends ConsumerWidget {
           child: FilledButton(
             onPressed: preview.canImport
                 ? () async {
-                    await ref.read(backupProvider).importCsv(preview);
+                    final work = ref.read(backupProvider).importCsv(preview);
+                    await whileBusy(context, 'Importing transactions…', work);
                     if (context.mounted) Navigator.pop(context);
                   }
                 : null,
