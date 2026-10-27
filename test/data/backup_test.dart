@@ -84,7 +84,7 @@ void main() {
     test('a backup whose schema differs from this app is rejected', () async {
       final path = '${dir.path}/backup.sqlite';
       final changes = {
-        'other version': 'PRAGMA user_version = 2',
+        'no version': 'PRAGMA user_version = 0',
         'renamed column': 'ALTER TABLE "transaction" RENAME COLUMN note TO content',
         'missing table': 'DROP TABLE recurring_rule',
       };
@@ -98,6 +98,19 @@ void main() {
 
         expect(checkBackupFile(path, schema: db), 'This is not a Wealth Tracker backup.', reason: change);
       }
+    });
+
+    test('a backup from a newer version asks for an app update', () async {
+      final path = '${dir.path}/backup.sqlite';
+      await backup.exportSqlite(path);
+      sqlite3.open(path)
+        ..execute('PRAGMA user_version = ${db.schemaVersion + 1}')
+        ..close();
+
+      expect(
+        checkBackupFile(path, schema: db),
+        'This backup is from a newer version of Wealth Tracker. Update the app, then restore it.',
+      );
     });
   });
 
