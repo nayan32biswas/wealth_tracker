@@ -133,11 +133,19 @@ class _HistoryChart extends StatelessWidget {
       _ when p.start.day == 1 => 'MMM',
       _ => 'd MMM',
     }).format(p.start);
+    final axis = AxisScale.of(totals, minStep: money.unit);
     return BarChart(
       BarChartData(
-        gridData: chartGrid(scheme),
+        minY: axis.min,
+        maxY: axis.max,
+        gridData: chartGrid(scheme, axis),
         borderData: FlBorderData(show: false),
-        titlesData: bottomTitles(context, (i) => short(periods[i])),
+        titlesData: chartTitles(
+          context,
+          bottom: (i) => short(periods[i]),
+          scale: axis,
+          left: (v) => money.compact(v.round(), step: axis.step.round()),
+        ),
         barTouchData: barTooltip(
           scheme,
           (group, value, _) => '${periodLabel(periods[group.x])}\n${money.format(value.toInt())}',

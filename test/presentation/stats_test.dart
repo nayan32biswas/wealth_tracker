@@ -244,6 +244,14 @@ void main() {
 
     await tester.scrollUntilVisible(find.text('Savings rate'), 100, scrollable: find.byType(Scrollable).first);
     expect(find.text('Savings rate'), findsOneWidget);
+    final savingsChart = find.byType(LineChart).last;
+    for (final label in ['0%', '50%', '100%']) {
+      expect(
+        find.descendant(of: savingsChart, matching: find.text(label)),
+        findsOneWidget,
+        reason: label,
+      );
+    }
     final sep = find.widgetWithText(ListTile, 'Sep 2026');
     await tester.scrollUntilVisible(sep, 100, scrollable: find.byType(Scrollable).first);
     // Sep: ৳9,000 in, ৳500 out, so 94% is kept. Aug had no income.
@@ -268,6 +276,14 @@ void main() {
       expect(find.text('Spent so far'), findsOneWidget);
       expect(find.text('৳500.00'), findsOneWidget);
       expect(find.text('৳500.00 more than Aug 2026 by this point'), findsOneWidget);
+      // ৳500 at most, so the left axis runs ৳0 to ৳600 in steps of ৳200.
+      for (final label in ['৳0', '৳200', '৳400', '৳600']) {
+        expect(
+          find.descendant(of: find.byType(LineChart), matching: find.text(label)),
+          findsOneWidget,
+          reason: label,
+        );
+      }
     });
 
     testWidgets('yearly compares this year with the year before', (tester) async {

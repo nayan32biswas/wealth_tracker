@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../models/app_settings.dart';
 import '../models/categories.dart';
 import '../models/enums.dart';
@@ -13,7 +15,8 @@ class MoneyFormat {
   final String symbol;
   final int decimals;
 
-  int get _scale {
+  /// Minor units in one whole unit, e.g. 100 paisa in a taka.
+  int get unit {
     var s = 1;
     for (var i = 0; i < decimals; i++) {
       s *= 10;
@@ -23,9 +26,31 @@ class MoneyFormat {
 
   String format(int minor, {bool withSymbol = true}) {
     final abs = minor.abs();
-    final whole = _group('${abs ~/ _scale}');
-    final fraction = decimals == 0 ? '' : '.${'${abs % _scale}'.padLeft(decimals, '0')}';
+    final whole = _group('${abs ~/ unit}');
+    final fraction = decimals == 0 ? '' : '.${'${abs % unit}'.padLeft(decimals, '0')}';
     return '${minor < 0 ? '-' : ''}${withSymbol ? symbol : ''}$whole$fraction';
+  }
+
+  /// A short form for chart axes: ৳950, ৳12K, ৳2.25M. Labels [step] apart
+  /// get just enough decimals that no two of them read the same.
+  String compact(int minor, {int step = 0}) {
+    final whole = minor.abs() / unit;
+    final (size, suffix) = whole >= 1e9
+        ? (1e9, 'B')
+        : whole >= 1e6
+        ? (1e6, 'M')
+        : whole >= 1e3
+        ? (1e3, 'K')
+        : (1.0, '');
+    final gap = step / unit / size;
+    bool isWhole(num x) => (x - x.round()).abs() < 1e-6;
+    var digits = step == 0 ? 1 : 0;
+    while (digits < 3 && gap > 0 && !isWhole(gap * math.pow(10, digits))) {
+      digits++;
+    }
+    var text = (whole / size).toStringAsFixed(digits);
+    if (text.contains('.')) text = text.replaceFirst(RegExp(r'\.?0+$'), '');
+    return '${minor < 0 ? '-' : ''}$symbol$text$suffix';
   }
 
   /// Fixed decimals, no symbol or grouping: the form used in CSV files.
@@ -48,7 +73,7 @@ class MoneyFormat {
     final fraction = match.group(2) ?? '';
     if (whole.isEmpty && fraction.isEmpty) return null;
     if (fraction.length > decimals) return null;
-    return int.parse(whole.isEmpty ? '0' : whole) * _scale + int.parse(fraction.padRight(decimals, '0').ifEmpty('0'));
+    return int.parse(whole.isEmpty ? '0' : whole) * unit + int.parse(fraction.padRight(decimals, '0').ifEmpty('0'));
   }
 
   static String _group(String digits) {

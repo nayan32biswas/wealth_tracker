@@ -113,17 +113,22 @@ class _PaceChart extends StatelessWidget {
       barWidth: 2,
       dotData: const FlDotData(show: false),
     );
+    final scale = AxisScale.of([...now, ...then], minStep: money.unit);
     return LineChart(
       LineChartData(
         minX: 0,
         maxX: (math.max(now.length, then.length) - 1).toDouble(),
-        gridData: chartGrid(scheme),
+        minY: scale.min,
+        maxY: scale.max,
+        gridData: chartGrid(scheme, scale),
         borderData: FlBorderData(show: false),
         // The chart also labels the last point, which can crowd the one before it.
-        titlesData: bottomTitles(
+        titlesData: chartTitles(
           context,
-          (i) => i % (byMonth ? 3 : 7) != 0 ? null : step(i),
+          bottom: (i) => i % (byMonth ? 3 : 7) != 0 ? null : step(i),
           interval: byMonth ? 3 : 7,
+          scale: scale,
+          left: (v) => money.compact(v.round(), step: scale.step.round()),
         ),
         lineTouchData: lineTooltip(scheme, (s) => '${names[s.barIndex]}\n${money.format(s.y.toInt())}'),
         lineBarsData: [line(now, scheme.series2), line(then, scheme.outline)],
