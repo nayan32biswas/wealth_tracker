@@ -145,8 +145,16 @@ class TrendsView extends ConsumerWidget {
   }
 }
 
-FlTitlesData _titles(BuildContext context, List<TrendPoint> points, TrendScale scale) =>
-    bottomTitles(context, (i) => _short(scale, points[i].start), interval: 1);
+FlTitlesData _titles(
+  BuildContext context,
+  List<TrendPoint> points,
+  TrendScale scale,
+  AxisScale axis,
+  String Function(double value) left,
+) => chartTitles(context, bottom: (i) => _short(scale, points[i].start), interval: 1, scale: axis, left: left);
+
+String Function(double value) _moneyLabel(MoneyFormat money, AxisScale axis) =>
+    (v) => money.compact(v.round(), step: axis.step.round());
 
 LineChartBarData _line(List<FlSpot> spots, ColorScheme scheme) => LineChartBarData(
   spots: spots,
@@ -168,11 +176,14 @@ class _NetWorthChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final axis = AxisScale.of([for (final p in points) p.netWorth], minStep: money.unit, fromZero: false);
     return LineChart(
       LineChartData(
-        gridData: chartGrid(scheme),
+        minY: axis.min,
+        maxY: axis.max,
+        gridData: chartGrid(scheme, axis),
         borderData: FlBorderData(show: false),
-        titlesData: _titles(context, points, scale),
+        titlesData: _titles(context, points, scale, axis, _moneyLabel(money, axis)),
         lineTouchData: lineTooltip(
           scheme,
           (s) => '${_long(scale, points[s.x.toInt()].start)}\n${money.format(points[s.x.toInt()].netWorth)}',
@@ -201,11 +212,16 @@ class _FlowChart extends StatelessWidget {
       width: 10,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
     );
+    final axis = AxisScale.of([
+      for (final p in points) ...[p.income, p.expense],
+    ], minStep: money.unit);
     return BarChart(
       BarChartData(
-        gridData: chartGrid(scheme),
+        minY: axis.min,
+        maxY: axis.max,
+        gridData: chartGrid(scheme, axis),
         borderData: FlBorderData(show: false),
-        titlesData: _titles(context, points, scale),
+        titlesData: _titles(context, points, scale, axis, _moneyLabel(money, axis)),
         barTouchData: barTooltip(
           scheme,
           (_, value, rodIndex) => '${rodIndex == 0 ? 'Income' : 'Expense'}\n${money.format(value.toInt())}',
@@ -237,13 +253,14 @@ class _SavingsChart extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final rates = [for (final p in points) savingsRate(p.income, p.expense)];
     double drawn(double rate) => math.max(rate, -100);
+    final axis = AxisScale.of([100, for (final r in rates.whereType<double>()) drawn(r)]);
     return LineChart(
       LineChartData(
-        minY: rates.whereType<double>().fold<double>(0, (low, r) => math.min(low, drawn(r))),
-        maxY: 100,
-        gridData: chartGrid(scheme),
+        minY: axis.min,
+        maxY: axis.max,
+        gridData: chartGrid(scheme, axis),
         borderData: FlBorderData(show: false),
-        titlesData: _titles(context, points, scale),
+        titlesData: _titles(context, points, scale, axis, (v) => '${v.round()}%'),
         extraLinesData: ExtraLinesData(horizontalLines: [HorizontalLine(y: 0, color: scheme.outline, strokeWidth: 1)]),
         lineTouchData: lineTooltip(
           scheme,

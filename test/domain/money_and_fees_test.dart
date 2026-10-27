@@ -14,6 +14,19 @@ void main() {
       expect(taka.format(-203000), '-৳2,030.00');
     });
 
+    test('compact labels shorten big amounts and keep neighbours apart', () {
+      expect(taka.compact(0, step: 2000000), '৳0');
+      expect(taka.compact(95000, step: 5000), '৳950');
+      expect(taka.compact(1200000, step: 200000), '৳12K');
+      expect(taka.compact(100000, step: 50000), '৳1K');
+      expect(taka.compact(150000, step: 50000), '৳1.5K');
+      expect(taka.compact(225000000, step: 5000000), '৳2.25M');
+      expect(taka.compact(102000, step: 2000), '৳1.02K');
+      expect(taka.compact(104000, step: 2000), '৳1.04K');
+      expect(taka.compact(-5000000, step: 2500000), '-৳50K');
+      expect(const MoneyFormat(symbol: '¥', decimals: 0).compact(1500, step: 500), '¥1.5K');
+    });
+
     test('can leave out the symbol', () {
       expect(taka.format(150050, withSymbol: false), '1,500.50');
       expect(taka.plain(150050), '1500.50');
