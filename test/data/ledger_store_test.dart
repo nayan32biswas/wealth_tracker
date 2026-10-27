@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wealthtracker/data/db/app_database.dart';
@@ -8,6 +9,7 @@ import 'package:wealthtracker/data/ledger_store.dart';
 import 'package:wealthtracker/data/repositories/drift_repositories.dart';
 import 'package:wealthtracker/domain/models/enums.dart';
 import 'package:wealthtracker/domain/models/transactions.dart';
+import 'package:wealthtracker/domain/repositories/repositories.dart';
 
 void main() {
   late Directory dir;
@@ -90,4 +92,79 @@ void main() {
 
     expect((await store.repos.settings.get()).lockEnabled, isFalse);
   });
+
+  group('a backup from an older version', () {
+    Future<void> openNextVersion(Future<void> Function(AppDatabase db) upgrade) async {
+      await store.db.close();
+      store = LedgerStore('${dir.path}/next.sqlite', NativeDatabase.new, openDatabase: (e) => _NextVersion(e, upgrade));
+      await store.open();
+      await addExpense(store.repos, 'on this phone');
+    }
+
+    Future<int> liveVersion() async =>
+        (await store.db.customSelect('PRAGMA user_version').getSingle()).read<int>('user_version');
+
+    test('is upgraded, then restored', () async {
+      await openNextVersion((db) => db.customStatement('''UPDATE "transaction" SET note = note || ' (upgraded)' '''));
+      final backup = await backupWith('from backup');
+
+      expect(store.check(backup), isNull);
+      await store.restore(backup);
+
+      expect(await notes(), ['from backup (upgraded)']);
+      expect(await liveVersion(), 2);
+    });
+
+    test('whose upgrade fails leaves the ledger as it was', () async {
+      await openNextVersion((db) => throw StateError('migration bug'));
+
+      await expectLater(
+        store.restore(await backupWith('from backup')),
+        throwsA(
+          isA<RuleViolation>().having(
+            (e) => e.message,
+            'message',
+            'This backup could not be updated for this version of the app.',
+          ),
+        ),
+      );
+
+      expect(await notes(), ['on this phone']);
+      expect(File('${store.path}.restoring').existsSync(), isFalse);
+    });
+
+    test('that does not match this version after its upgrade is refused', () async {
+      await openNextVersion((db) => db.customStatement('ALTER TABLE "transaction" ADD COLUMN extra TEXT'));
+
+      await expectLater(
+        store.restore(await backupWith('from backup')),
+        throwsA(isA<RuleViolation>().having((e) => e.message, 'message', notOurBackup)),
+      );
+
+      expect(await notes(), ['on this phone']);
+      expect(await liveVersion(), 2);
+      expect(File('${store.path}.restoring').existsSync(), isFalse);
+    });
+  });
+}
+
+/// Stands in for the next app version: schema 2 with the given migration from
+/// version 1, so a real version 1 backup can be restored into it.
+class _NextVersion extends AppDatabase {
+  _NextVersion(super.e, this._upgrade);
+
+  final Future<void> Function(AppDatabase db) _upgrade;
+
+  @override
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    final current = super.migration;
+    return MigrationStrategy(
+      onCreate: current.onCreate,
+      beforeOpen: current.beforeOpen,
+      onUpgrade: (m, from, to) => _upgrade(this),
+    );
+  }
 }

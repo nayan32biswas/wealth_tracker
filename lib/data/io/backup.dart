@@ -12,26 +12,34 @@ import '../repositories/drift_repositories.dart';
 
 const csvColumns = ['date', 'time', 'type', 'amount', 'fee', 'account', 'to_account', 'category', 'note'];
 
+const notOurBackup = 'This is not a Wealth Tracker backup.';
+
 /// Returns why [path] can't be restored, or null when it is a usable backup.
-/// The backup must match [schema] exactly (version, tables, columns): once it
-/// replaces the live file, anything else would break the app.
+/// A backup from this version must match [schema] exactly (tables, columns):
+/// once it replaces the live file, anything else would break the app. A
+/// backup from an older version passes here; restore upgrades a copy of it
+/// and checks that copy again before it replaces anything.
 String? checkBackupFile(String path, {required AppDatabase schema}) {
-  const notOurs = 'This is not a Wealth Tracker backup.';
   try {
     final db = sqlite3.open(path, mode: OpenMode.readOnly);
     try {
       if (db.select('PRAGMA integrity_check').first.values.first != 'ok') return 'The backup file is damaged.';
-      if (db.select('PRAGMA user_version').first.values.first != schema.schemaVersion) return notOurs;
+      final version = db.select('PRAGMA user_version').first.values.first as int;
+      if (version > schema.schemaVersion) {
+        return 'This backup is from a newer version of Wealth Tracker. Update the app, then restore it.';
+      }
+      if (version < 1) return notOurBackup;
+      if (version < schema.schemaVersion) return null;
       for (final table in schema.allTables) {
         final columns = {for (final r in db.select('PRAGMA table_info("${table.actualTableName}")')) r['name']};
-        if (!_sameColumns(columns, table.$columns.map((c) => c.name))) return notOurs;
+        if (!_sameColumns(columns, table.$columns.map((c) => c.name))) return notOurBackup;
       }
       return null;
     } finally {
       db.close();
     }
   } on SqliteException {
-    return notOurs;
+    return notOurBackup;
   }
 }
 
