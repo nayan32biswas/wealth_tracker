@@ -108,9 +108,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     final value = money.parse(text) ?? 0;
     setState(() {
       _padText = text;
-      _draft = _padField == _PadField.amount
-          ? _draft.withAmount(_negative ? -value : value)
-          : _draft.withFee(value);
+      _draft = _padField == _PadField.amount ? _draft.withAmount(_negative ? -value : value) : _draft.withFee(value);
     });
   }
 

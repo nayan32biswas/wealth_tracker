@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -29,4 +31,20 @@ class DeviceFiles implements FileGateway {
 
   @override
   Future<String> tempDirectory() async => (await getTemporaryDirectory()).path;
+
+  @override
+  Future<void> clearExports() async => clearExportsIn(await tempDirectory());
+}
+
+/// A shared file can't be deleted right after the share sheet closes: the
+/// app that received it may still be reading it. So leftovers are removed
+/// before the next export and when the app starts. share_plus keeps its own
+/// copy in a subfolder until its next share, so that copy goes too.
+void clearExportsIn(String tempDir) {
+  for (final dir in [Directory(tempDir), Directory(p.join(tempDir, 'share_plus'))]) {
+    if (!dir.existsSync()) continue;
+    for (final file in dir.listSync().whereType<File>()) {
+      if (p.basename(file.path).startsWith(exportFilePrefix)) file.deleteSync();
+    }
+  }
 }

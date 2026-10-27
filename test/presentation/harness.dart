@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wealthtracker/data/db/app_database.dart';
+import 'package:wealthtracker/data/device_files.dart';
 import 'package:wealthtracker/data/io/backup.dart';
 import 'package:wealthtracker/data/repositories/drift_repositories.dart';
 import 'package:wealthtracker/domain/models/enums.dart';
@@ -87,6 +89,33 @@ class FakeFiles implements FileGateway {
 
   @override
   Future<String> tempDirectory() async => dir;
+
+  @override
+  Future<void> clearExports() async => clearExportsIn(dir);
+}
+
+/// The real backup service, except a test can hold an import open to see
+/// what the screen shows meanwhile.
+class HoldableBackup implements BackupService {
+  HoldableBackup(this._inner);
+
+  final BackupService _inner;
+  Completer<void>? holdImport;
+
+  @override
+  Future<void> exportSqlite(String targetPath) => _inner.exportSqlite(targetPath);
+
+  @override
+  Future<String> exportCsv() => _inner.exportCsv();
+
+  @override
+  Future<CsvPreview> previewCsv(String text) => _inner.previewCsv(text);
+
+  @override
+  Future<void> importCsv(CsvPreview preview) async {
+    await holdImport?.future;
+    await _inner.importCsv(preview);
+  }
 }
 
 class FakeRestorer implements DatabaseRestorer {
@@ -106,7 +135,7 @@ class FakeRestorer implements DatabaseRestorer {
 }
 
 class TestApp {
-  TestApp._(this.repos, this.vault, this.biometrics, this.privacy, this.files, this.restorer, this.cipher);
+  TestApp._(this.repos, this.vault, this.biometrics, this.privacy, this.files, this.restorer, this.cipher, this.backup);
 
   final DriftRepositories repos;
   final PinVault vault;
@@ -115,6 +144,7 @@ class TestApp {
   final FakeFiles files;
   final FakeRestorer restorer;
   final BackupCipher cipher;
+  final HoldableBackup backup;
 }
 
 /// A few entries across two months plus one upcoming rule.
@@ -184,6 +214,7 @@ Future<TestApp> pumpApp(
   final biometrics = FakeBiometrics()..succeeds = biometricSucceeds;
   final privacy = FakeScreenPrivacy();
   final cipher = BackupCipher(iterations: 10, offload: <R>(work) async => work());
+  final backup = HoldableBackup(DriftBackupService(db, repos));
   var start = LockStart.open;
   await tester.runAsync(() async {
     await arrange?.call(repos);
@@ -204,7 +235,7 @@ Future<TestApp> pumpApp(
         biometricsProvider.overrideWithValue(biometrics),
         screenPrivacyProvider.overrideWithValue(privacy),
         lockOnStartProvider.overrideWithValue(start),
-        backupProvider.overrideWithValue(DriftBackupService(db, repos)),
+        backupProvider.overrideWithValue(backup),
         filesProvider.overrideWithValue(files),
         restorerProvider.overrideWithValue(restorer),
         backupCipherProvider.overrideWithValue(cipher),
@@ -213,7 +244,7 @@ Future<TestApp> pumpApp(
     ),
   );
   await tester.pumpAndSettle();
-  return TestApp._(repos, vault, biometrics, privacy, files, restorer, cipher);
+  return TestApp._(repos, vault, biometrics, privacy, files, restorer, cipher, backup);
 }
 
 Future<void> openTab(WidgetTester tester, String label) async {

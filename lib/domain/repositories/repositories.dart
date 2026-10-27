@@ -178,11 +178,17 @@ abstract interface class BackupService {
   Future<void> importCsv(CsvPreview preview);
 }
 
+/// Every exported file name starts with this, so leftovers can be found.
+const exportFilePrefix = 'wealthtracker-';
+
 /// Picking and sharing files through the phone's own screens.
 abstract interface class FileGateway {
   Future<Uint8List?> pickFile();
   Future<void> share(String path);
   Future<String> tempDirectory();
+
+  /// Deletes files left by earlier exports, some of them unencrypted backups.
+  Future<void> clearExports();
 }
 
 /// Replaces the whole ledger with a backup file.

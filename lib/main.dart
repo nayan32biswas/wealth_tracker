@@ -22,6 +22,8 @@ Future<void> main() async {
   } on Object catch (e) {
     return runApp(_StartupError('$e'));
   }
+  // Cleanup must never stop the app from starting.
+  DeviceFiles().clearExports().ignore();
   runApp(_LedgerHost(store, PinVault(KeychainSecretStore()), NativeScreenPrivacy()));
 }
 
