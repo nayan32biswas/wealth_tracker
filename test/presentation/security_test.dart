@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wealthtracker/data/repositories/drift_repositories.dart';
 import 'package:wealthtracker/domain/services/security.dart';
@@ -317,6 +318,33 @@ void main() {
 
       expect(find.byType(LockScreen), findsNothing);
       expect(find.byKey(const ValueKey('privacy-cover')), findsNothing);
+    });
+
+    testWidgets('closing the app with back locks it on return, even within the timeout', (tester) async {
+      await pumpApp(tester, arrange: lockEnabled, arrangeVault: pin1234);
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async => null);
+
+      await tester.binding.handlePopRoute();
+      await goAway(tester);
+      testClock = () => testToday.add(const Duration(seconds: 1));
+      await comeBack(tester);
+
+      expect(find.byType(LockScreen), findsOneWidget);
+    });
+
+    testWidgets('after unlocking, a quick trip away does not lock again', (tester) async {
+      await pumpApp(tester, arrange: lockEnabled, arrangeVault: pin1234);
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async => null);
+      await tester.binding.handlePopRoute();
+      await goAway(tester);
+      await comeBack(tester);
+      await typePin(tester, '1234', submit: 'Unlock');
+
+      await goAway(tester);
+      testClock = () => testToday.add(const Duration(seconds: 1));
+      await comeBack(tester);
+
+      expect(find.byType(LockScreen), findsNothing);
     });
 
     testWidgets('a chosen lock after time decides when coming back locks', (tester) async {

@@ -35,6 +35,11 @@ class LockController extends Notifier<LockState> {
   // not count as leaving the app, or it would relock straight away.
   bool _authenticating = false;
 
+  // Closing the app ends the session, whatever the lock-after time. Android
+  // may keep the app in memory instead of starting it fresh, so this is
+  // remembered until it comes back.
+  bool _closed = false;
+
   PinVault get _vault => ref.read(pinVaultProvider);
 
   @override
@@ -104,11 +109,15 @@ class LockController extends Notifier<LockState> {
     if (!_authenticating) _awaySince = now;
   }
 
+  void close() => _closed = true;
+
   void back(DateTime now) {
     if (_authenticating) return;
     final timeout = ref.read(settingsProvider).lockTimeoutSeconds;
-    final relock = isActive && shouldLockOnReturn(awaySince: _awaySince, now: now, timeoutSeconds: timeout);
+    final relock =
+        isActive && (_closed || shouldLockOnReturn(awaySince: _awaySince, now: now, timeoutSeconds: timeout));
     _awaySince = null;
+    _closed = false;
     state = state.copyWith(covered: false, locked: state.locked || relock);
   }
 
