@@ -82,7 +82,7 @@ GoRouter buildRouter() {
   );
 }
 
-class _Shell extends StatelessWidget {
+class _Shell extends ConsumerWidget {
   const _Shell(this.navigatorKey, this.location, this.child);
 
   final GlobalKey<NavigatorState> navigatorKey;
@@ -90,23 +90,16 @@ class _Shell extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final current = _sections.indexWhere((s) => s.path == location);
     return PopScope(
+      // Back on a main tab closes the app. It is done here, not left to
+      // Android, so the lock knows the session is over.
       canPop: false,
-      onPopInvokedWithResult: (didPop, _) async {
+      onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
-        final close = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Close Wealth Tracker?'),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Close')),
-            ],
-          ),
-        );
-        if (close ?? false) await SystemNavigator.pop();
+        ref.read(lockProvider.notifier).close();
+        SystemNavigator.pop();
       },
       child: Scaffold(
         body: child,

@@ -253,6 +253,25 @@ void main() {
         }
       });
 
+      testWidgets('on a small screen the box being typed in scrolls up above the pad', (tester) async {
+        await pumpApp(tester);
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        await tester.pumpAndSettle();
+        await openNewTransaction(tester);
+        await showMoreOptions(tester);
+
+        for (final field in ['Amount', 'Fee']) {
+          final box = find.widgetWithText(InputDecorator, field);
+          await tester.ensureVisible(box);
+          await tester.pumpAndSettle();
+          await tapAndSettle(tester, box);
+
+          expect(tester.getRect(box).bottom, lessThanOrEqualTo(tester.getRect(find.byType(NumberPad)).top));
+          await tapAndSettle(tester, padKey('Done'));
+        }
+      });
+
       testWidgets('the boxes have no calculator button of their own', (tester) async {
         await pumpApp(tester);
         await openNewTransaction(tester);

@@ -26,7 +26,7 @@ void main() {
     }
   });
 
-  testWidgets('back on a main tab asks before closing the app', (tester) async {
+  testWidgets('back on a main tab closes the app without asking', (tester) async {
     await pumpApp(tester);
     final closes = <MethodCall>[];
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -36,25 +36,19 @@ void main() {
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('Close Wealth Tracker?'), findsOneWidget);
-    await tapAndSettle(tester, find.text('Cancel'));
-    expect(find.text('Close Wealth Tracker?'), findsNothing);
-    expect(closes, isEmpty);
 
-    await tester.binding.handlePopRoute();
-    await tester.pumpAndSettle();
-    await tapAndSettle(tester, find.text('Close'));
+    expect(find.byType(AlertDialog), findsNothing);
     expect(closes, hasLength(1));
   });
 
-  testWidgets('back on a pushed screen goes back without asking', (tester) async {
+  testWidgets('back on a pushed screen goes back', (tester) async {
     await pumpApp(tester);
     await openTab(tester, 'Settings');
     await tapAndSettle(tester, find.text('Categories'));
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('Close Wealth Tracker?'), findsNothing);
+    expect(find.byType(AlertDialog), findsNothing);
     expect(find.text('Accounts and groups'), findsOneWidget);
   });
 

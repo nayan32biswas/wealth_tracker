@@ -88,8 +88,7 @@ class SecuritySettings extends ConsumerWidget {
 
   /// Asks for a new PIN or password twice. Returns it once both entries match.
   static Future<({String secret, SecretKind kind})?> _newSecret(BuildContext context) =>
-      Navigator.push<({String secret, SecretKind kind})>(
-        context,
+      Navigator.of(context, rootNavigator: true).push<({String secret, SecretKind kind})>(
         MaterialPageRoute(fullscreenDialog: true, builder: (_) => const _NewSecretScreen()),
       );
 
@@ -100,10 +99,10 @@ class SecuritySettings extends ConsumerWidget {
     SecretKind? kind,
     Future<UnlockResult> Function(String) check,
   ) async =>
-      await Navigator.push<bool>(
+      await Navigator.of(
         context,
-        MaterialPageRoute(fullscreenDialog: true, builder: (_) => _CheckSecretScreen(title, kind, check)),
-      ) ??
+        rootNavigator: true,
+      ).push<bool>(MaterialPageRoute(fullscreenDialog: true, builder: (_) => _CheckSecretScreen(title, kind, check))) ??
       false;
 }
 
@@ -135,32 +134,34 @@ class _NewSecretScreenState extends State<_NewSecretScreen> {
           ),
         ],
       ),
-      body: SecretInput(
-        key: ValueKey((_kind, _first)),
-        kind: _kind,
-        title: _first != null
-            ? 'Enter it again'
-            : pin
-            ? 'Choose a PIN'
-            : 'Choose a password',
-        hint: pin ? '4 to 8 digits' : 'At least $minPasswordLength characters of any kind',
-        error: _error,
-        onSubmit: (secret) async {
-          if (_first == null) {
-            setState(() {
-              _first = secret;
-              _error = null;
-            });
-          } else if (secret == _first) {
-            Navigator.pop(context, (secret: secret, kind: _kind));
-          } else {
-            setState(() {
-              _first = null;
-              _error = "They didn't match. Try again.";
-            });
-          }
-          return true;
-        },
+      body: SafeArea(
+        child: SecretInput(
+          key: ValueKey((_kind, _first)),
+          kind: _kind,
+          title: _first != null
+              ? 'Enter it again'
+              : pin
+              ? 'Choose a PIN'
+              : 'Choose a password',
+          hint: pin ? '4 to 8 digits' : 'At least $minPasswordLength characters of any kind',
+          error: _error,
+          onSubmit: (secret) async {
+            if (_first == null) {
+              setState(() {
+                _first = secret;
+                _error = null;
+              });
+            } else if (secret == _first) {
+              Navigator.pop(context, (secret: secret, kind: _kind));
+            } else {
+              setState(() {
+                _first = null;
+                _error = "They didn't match. Try again.";
+              });
+            }
+            return true;
+          },
+        ),
       ),
     );
   }
@@ -183,20 +184,22 @@ class _CheckSecretScreenState extends ConsumerState<_CheckSecretScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(),
-    body: SecretInput(
-      kind: widget.kind,
-      title: widget.title,
-      error: _error,
-      onSubmit: (secret) async {
-        final result = await widget.check(secret);
-        if (!context.mounted) return result.ok;
-        if (result.ok) {
-          Navigator.pop(context, true);
-        } else {
-          setState(() => _error = wrongSecretMessage(result, widget.kind, ref.read(clockProvider)()));
-        }
-        return result.ok;
-      },
+    body: SafeArea(
+      child: SecretInput(
+        kind: widget.kind,
+        title: widget.title,
+        error: _error,
+        onSubmit: (secret) async {
+          final result = await widget.check(secret);
+          if (!context.mounted) return result.ok;
+          if (result.ok) {
+            Navigator.pop(context, true);
+          } else {
+            setState(() => _error = wrongSecretMessage(result, widget.kind, ref.read(clockProvider)()));
+          }
+          return result.ok;
+        },
+      ),
     ),
   );
 }

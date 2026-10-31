@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wealthtracker/data/repositories/drift_repositories.dart';
 import 'package:wealthtracker/domain/services/security.dart';
 import 'package:wealthtracker/presentation/features/security/app_lock.dart';
+import 'package:wealthtracker/presentation/features/security/secret_input.dart';
 
 import 'harness.dart';
 
@@ -46,6 +48,49 @@ void main() {
       expect((await tester.runAsync(app.repos.settings.get))!.lockEnabled, isTrue);
       expect(app.privacy.secure, isTrue);
       expect(find.text('Change PIN or password'), findsOneWidget);
+    });
+
+    testWidgets('on a short screen the PIN screen covers the tabs and its button stays above the system bar', (
+      tester,
+    ) async {
+      final app = await pumpApp(tester);
+      tester.view.physicalSize = const Size(320, 560);
+      tester.view.devicePixelRatio = 1;
+      // Android's own navigation bar at the bottom.
+      tester.view.padding = const FakeViewPadding(bottom: 48);
+      tester.view.viewPadding = const FakeViewPadding(bottom: 48);
+      await tester.pumpAndSettle();
+      await openTab(tester, 'Settings');
+      await tester.scrollUntilVisible(find.text('App lock'), 200, scrollable: find.byType(Scrollable).first);
+      await tapAndSettle(tester, find.text('App lock'));
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(NavigationBar), findsNothing);
+      for (var i = 0; i < 2; i++) {
+        for (final digit in '1234'.split('')) {
+          await tester.tap(find.descendant(of: find.byType(PinPad), matching: find.text(digit)));
+          await tester.pump();
+        }
+        await tester.ensureVisible(find.text('OK'));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(find.text('OK')).bottom, lessThanOrEqualTo(560 - 48));
+        await tapAndSettle(tester, find.text('OK'));
+      }
+
+      expect(await tester.runAsync(() => app.vault.verify('1234')), isTrue);
+    });
+
+    testWidgets('the lock screen fits a short landscape screen', (tester) async {
+      await pumpApp(tester, arrange: lockEnabled, arrangeVault: pin1234, lockOnStart: true);
+      tester.view.physicalSize = const Size(640, 320);
+      tester.view.devicePixelRatio = 1;
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.text('Unlock'));
+      await tester.pumpAndSettle();
+      await typePin(tester, '1234', submit: 'Unlock');
+      expect(find.byType(LockScreen), findsNothing);
     });
 
     testWidgets('a password can be chosen instead of a PIN', (tester) async {
@@ -317,6 +362,33 @@ void main() {
 
       expect(find.byType(LockScreen), findsNothing);
       expect(find.byKey(const ValueKey('privacy-cover')), findsNothing);
+    });
+
+    testWidgets('closing the app with back locks it on return, even within the timeout', (tester) async {
+      await pumpApp(tester, arrange: lockEnabled, arrangeVault: pin1234);
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async => null);
+
+      await tester.binding.handlePopRoute();
+      await goAway(tester);
+      testClock = () => testToday.add(const Duration(seconds: 1));
+      await comeBack(tester);
+
+      expect(find.byType(LockScreen), findsOneWidget);
+    });
+
+    testWidgets('after unlocking, a quick trip away does not lock again', (tester) async {
+      await pumpApp(tester, arrange: lockEnabled, arrangeVault: pin1234);
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async => null);
+      await tester.binding.handlePopRoute();
+      await goAway(tester);
+      await comeBack(tester);
+      await typePin(tester, '1234', submit: 'Unlock');
+
+      await goAway(tester);
+      testClock = () => testToday.add(const Duration(seconds: 1));
+      await comeBack(tester);
+
+      expect(find.byType(LockScreen), findsNothing);
     });
 
     testWidgets('a chosen lock after time decides when coming back locks', (tester) async {
