@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -107,6 +108,8 @@ void main() {
     final earlier = tester.widget<Text>(range).data;
 
     await tap(tester, find.text('Spending pace'));
+    // On a small screen the open Spending pace pushes Trends below the fold.
+    await tester.scrollUntilVisible(find.text('Trends'), 200, scrollable: find.byType(Scrollable).first);
     await tap(tester, find.text('Trends'));
 
     expect(tester.widget<Text>(range).data, earlier);
@@ -172,20 +175,25 @@ void main() {
     expect(find.text('Preferences'), findsOneWidget);
   });
 
-  testWidgets('9. back on a main tab asks, and cancel stays', (tester) async {
+  testWidgets('9. back on a main tab closes the app without asking', (tester) async {
     await start(tester);
     await tab(tester, 'Stats');
+    // Catch the close, or it would end the test run.
+    final closes = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'SystemNavigator.pop') closes.add(call);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.text('Close Wealth Tracker?'), findsOneWidget);
-    await tap(tester, find.text('Cancel'));
 
-    expect(find.text('Close Wealth Tracker?'), findsNothing);
-    expect(find.text('Total spent'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(closes, hasLength(1));
   });
 
-  testWidgets('10. back on a sub screen goes back without asking', (tester) async {
+  testWidgets('10. back on a sub screen goes back', (tester) async {
     await start(tester);
     await tab(tester, 'Settings');
     await tap(tester, find.text('Categories'));
@@ -193,7 +201,7 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
 
-    expect(find.text('Close Wealth Tracker?'), findsNothing);
+    expect(find.byType(AlertDialog), findsNothing);
     expect(find.byType(CategoriesScreen), findsNothing);
     expect(find.text('Preferences'), findsOneWidget);
   });

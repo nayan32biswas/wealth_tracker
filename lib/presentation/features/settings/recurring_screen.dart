@@ -26,7 +26,12 @@ class RecurringScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Recurring')),
       body: rules.isEmpty
-          ? const Center(child: Text('Choose "Repeat" when adding a transaction to create one'))
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('Choose "Repeat" when adding a transaction to create one', textAlign: TextAlign.center),
+              ),
+            )
           : ListView(
               children: [
                 for (final (i, rule) in rules.indexed) ...[
