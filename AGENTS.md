@@ -22,8 +22,6 @@ Three layers under `lib/`. The UI never talks to the database directly.
 - `data/` — Drift tables, repository implementations (query Drift directly), import/export.
 - `presentation/` — screens, widgets, Riverpod controllers. Depends on `domain/` only; gets implementations through providers wired in `main.dart`.
 
-Exception: `lib/temporary/old_app_import/` (and its tests in `test/temporary/`) is a throwaway importer for the old money app. It holds both the converter and its Settings row so it can be deleted in one go: remove the folders and the one `OldAppImportTile` line in `settings_screen.dart`. Nothing else may import it.
-
 ## Data rules
 
 - Money is stored as integers in the smallest unit (paisa). Never use `double` for money.
