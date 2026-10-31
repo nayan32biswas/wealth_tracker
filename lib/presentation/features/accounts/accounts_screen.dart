@@ -18,54 +18,56 @@ class AccountsScreen extends ConsumerWidget {
     final sheet = ref.watch(balanceSheetProvider).value;
     final text = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Accounts')),
-      body: sheet == null
-          ? const SizedBox()
-          : ListView(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    children: [
-                      _Figure('Assets', sheet.assets),
-                      _Figure('Liabilities', sheet.liabilities),
-                      _Figure('Net worth', sheet.netWorth, tone: MoneyTone.signed),
-                    ],
-                  ),
-                ),
-                // Accounts sit a little right of their group so the nesting
-                // shows; every amount keeps the same right edge.
-                for (final (g, shown) in [
-                  for (final g in sheet.groups) (g, g.accounts.where((a) => !a.asset.isArchived || a.balance != 0)),
-                ])
-                  if (shown.isNotEmpty) ...[
-                    Container(
-                      color: Theme.of(context).colorScheme.surfaceContainerLow,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text(g.group.name, style: text.titleSmall)),
-                          MoneyText(owedOrHeld(g.group, g.total), style: text.titleSmall),
-                        ],
-                      ),
+      body: SafeArea(
+        bottom: false,
+        child: sheet == null
+            ? const SizedBox()
+            : ListView(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      children: [
+                        _Figure('Assets', sheet.assets),
+                        _Figure('Liabilities', sheet.liabilities),
+                        _Figure('Net worth', sheet.netWorth, tone: MoneyTone.signed),
+                      ],
                     ),
-                    // An archived account stays in view while it holds money.
-                    for (final a in shown)
-                      ListTile(
-                        contentPadding: const EdgeInsets.only(left: 24, right: 16),
-                        title: Text(a.asset.name),
-                        subtitle: a.asset.isArchived ? const Text('Archived') : null,
-                        trailing: MoneyText(owedOrHeld(g.group, a.balance), tone: MoneyTone.signed),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                            builder: (_) => AccountDetailScreen(account: a, group: g.group),
-                          ),
+                  ),
+                  // Accounts sit a little right of their group so the nesting
+                  // shows; every amount keeps the same right edge.
+                  for (final (g, shown) in [
+                    for (final g in sheet.groups) (g, g.accounts.where((a) => !a.asset.isArchived || a.balance != 0)),
+                  ])
+                    if (shown.isNotEmpty) ...[
+                      Container(
+                        color: Theme.of(context).colorScheme.surfaceContainerLow,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(g.group.name, style: text.titleSmall)),
+                            MoneyText(owedOrHeld(g.group, g.total), style: text.titleSmall),
+                          ],
                         ),
                       ),
-                  ],
-              ],
-            ),
+                      // An archived account stays in view while it holds money.
+                      for (final a in shown)
+                        ListTile(
+                          contentPadding: const EdgeInsets.only(left: 24, right: 16),
+                          title: Text(a.asset.name),
+                          subtitle: a.asset.isArchived ? const Text('Archived') : null,
+                          trailing: MoneyText(owedOrHeld(g.group, a.balance), tone: MoneyTone.signed),
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (_) => AccountDetailScreen(account: a, group: g.group),
+                            ),
+                          ),
+                        ),
+                    ],
+                ],
+              ),
+      ),
     );
   }
 }

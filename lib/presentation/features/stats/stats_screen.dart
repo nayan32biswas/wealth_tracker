@@ -58,19 +58,21 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     ref.listen(statsPeriodProvider, (_, _) {});
     ref.listen(trendWindowProvider, (_, _) {});
     return Scaffold(
-      appBar: AppBar(title: const Text('Stats')),
-      body: ListView(
-        children: [
-          for (final (i, section) in _sections.indexed) ...[
-            if (i > 0) const Divider(height: 1),
-            ListTile(
-              title: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
-              trailing: Icon(_open == i ? Icons.expand_less : Icons.expand_more),
-              onTap: () => setState(() => _open = _open == i ? null : i),
-            ),
-            if (_open == i) section.build(),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          children: [
+            for (final (i, section) in _sections.indexed) ...[
+              if (i > 0) const Divider(height: 1),
+              ListTile(
+                title: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
+                trailing: Icon(_open == i ? Icons.expand_less : Icons.expand_more),
+                onTap: () => setState(() => _open = _open == i ? null : i),
+              ),
+              if (_open == i) section.build(),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

@@ -26,6 +26,16 @@ void main() {
     }
   });
 
+  testWidgets('stats, accounts and settings show no page title: the tab names them', (tester) async {
+    await pumpApp(tester);
+
+    for (final tab in ['Stats', 'Accounts', 'Settings']) {
+      await openTab(tester, tab);
+      expect(find.byType(AppBar), findsNothing, reason: tab);
+      expect(find.text(tab), findsOneWidget, reason: '$tab: only the tab label');
+    }
+  });
+
   testWidgets('the tab bar is a compact 64 px', (tester) async {
     await pumpApp(tester);
 
