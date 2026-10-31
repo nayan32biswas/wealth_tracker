@@ -196,6 +196,43 @@ void main() {
       expect(find.descendant(of: august, matching: find.text('৳20.00')), findsWidgets);
     });
 
+    testWidgets('scrolling the entries moves the balance away but keeps the period bar', (tester) async {
+      await pumpApp(
+        tester,
+        arrange: (repos) async {
+          final wallet = (await repos.assets.all()).firstWhere((a) => a.name == 'Mobile Wallet').id;
+          for (var day = 1; day <= 20; day++) {
+            await repos.transactions.save(
+              Transaction(
+                id: 0,
+                type: TransactionType.expense,
+                amount: 1000 + day,
+                assetId: wallet,
+                note: 'Entry $day',
+                dateTime: DateTime(2026, 9, day, 9),
+              ),
+            );
+          }
+        },
+      );
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      await tester.pumpAndSettle();
+      await openTab(tester, 'Accounts');
+      await tapAndSettle(tester, find.widgetWithText(ListTile, 'Mobile Wallet'));
+      expect(find.text('Balance'), findsOneWidget);
+
+      await tester.drag(find.text('Entry 20'), const Offset(0, -400));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Balance').hitTestable(), findsNothing);
+      expect(find.text('Sep 2026').hitTestable(), findsOneWidget);
+      final bar = tester.getRect(find.text('Sep 2026'));
+      final appBarBottom = tester.getRect(find.byType(AppBar)).bottom;
+      expect(bar.top, greaterThanOrEqualTo(appBarBottom));
+      expect(bar.top - appBarBottom, lessThan(48), reason: 'pinned right under the app bar');
+    });
+
     testWidgets('opening the account does not move the activity tab', (tester) async {
       await openWallet(tester);
       await tapAndSettle(tester, find.byTooltip('Previous'));

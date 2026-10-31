@@ -58,19 +58,22 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
     ref.listen(statsPeriodProvider, (_, _) {});
     ref.listen(trendWindowProvider, (_, _) {});
     return Scaffold(
-      appBar: AppBar(title: const Text('Stats')),
-      body: ListView(
-        children: [
-          for (final (i, section) in _sections.indexed) ...[
-            if (i > 0) const Divider(height: 1),
-            ListTile(
-              title: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
-              trailing: Icon(_open == i ? Icons.expand_less : Icons.expand_more),
-              onTap: () => setState(() => _open = _open == i ? null : i),
-            ),
-            if (_open == i) section.build(),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          children: [
+            for (final (i, section) in _sections.indexed) ...[
+              if (i > 0) const Divider(height: 1),
+              ListTile(
+                dense: true,
+                title: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
+                trailing: Icon(_open == i ? Icons.expand_less : Icons.expand_more),
+                onTap: () => setState(() => _open = _open == i ? null : i),
+              ),
+              if (_open == i) section.build(),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -102,7 +105,7 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PeriodBar(statsPeriodProvider, menuInset: statsMenuInset),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           SegmentedButton<TransactionType>(
             segments: const [
               ButtonSegment(value: TransactionType.expense, label: Text('Expense')),
@@ -112,10 +115,10 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
             showSelectedIcon: false,
             onSelectionChanged: (s) => setState(() => _type = s.single),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
           Text(_type == TransactionType.expense ? 'Total spent' : 'Total received', style: text.labelLarge),
-          MoneyText(total, style: text.headlineMedium),
-          const SizedBox(height: 16),
+          MoneyText(total, style: text.headlineSmall),
+          const SizedBox(height: 8),
           if (shares.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),

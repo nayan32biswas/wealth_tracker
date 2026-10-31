@@ -26,6 +26,31 @@ void main() {
     }
   });
 
+  testWidgets('stats, accounts and settings show no page title: the tab names them', (tester) async {
+    await pumpApp(tester);
+
+    for (final tab in ['Stats', 'Accounts', 'Settings']) {
+      await openTab(tester, tab);
+      expect(find.byType(AppBar), findsNothing, reason: tab);
+      expect(find.text(tab), findsOneWidget, reason: '$tab: only the tab label');
+    }
+  });
+
+  testWidgets('the tab bar is a compact 64 px', (tester) async {
+    await pumpApp(tester);
+
+    expect(tester.getSize(find.byType(NavigationBar)).height, 64);
+  });
+
+  testWidgets('text is 10% smaller than the Material default', (tester) async {
+    await pumpApp(tester);
+
+    final text = Theme.of(tester.element(find.byType(NavigationBar))).textTheme;
+    expect(text.bodyMedium!.fontSize, closeTo(14 * 0.9, 0.01));
+    expect(text.titleLarge!.fontSize, closeTo(22 * 0.9, 0.01));
+    expect(text.headlineSmall!.fontSize, closeTo(24 * 0.9, 0.01));
+  });
+
   testWidgets('back on a main tab closes the app without asking', (tester) async {
     await pumpApp(tester);
     final closes = <MethodCall>[];

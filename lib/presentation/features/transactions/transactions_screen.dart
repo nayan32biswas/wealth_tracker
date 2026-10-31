@@ -95,7 +95,8 @@ class TotalsBar extends StatelessWidget {
         (label: 'Income', amount: totals.income, tone: MoneyTone.income),
         (label: 'Expense', amount: totals.expense, tone: MoneyTone.expense),
         (label: 'Net', amount: totals.net, tone: MoneyTone.signed),
-      ];
+      ],
+      _gap = 12;
 
   /// One account: transfers count, so Net is how much the balance moved.
   TotalsBar.account(AccountTotals totals, {super.key})
@@ -103,9 +104,11 @@ class TotalsBar extends StatelessWidget {
         (label: 'In', amount: totals.inflow, tone: MoneyTone.income),
         (label: 'Out', amount: totals.outflow, tone: MoneyTone.expense),
         (label: 'Net', amount: totals.net, tone: MoneyTone.signed),
-      ];
+      ],
+      _gap = 6;
 
   final List<_Cell> _cells;
+  final double _gap;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +127,7 @@ class TotalsBar extends StatelessWidget {
       ),
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: _gap),
       child: Row(children: [for (final c in _cells) cell(c.label, c.amount, c.tone)]),
     );
   }
@@ -133,14 +136,17 @@ class TotalsBar extends StatelessWidget {
 /// Entries grouped under a header per day. With [accountId] the headers show
 /// money in and out of that account, transfers included.
 class DayList extends StatelessWidget {
-  const DayList(this.txns, {super.key, this.accountId});
+  const DayList(this.txns, {super.key, this.accountId, this.sliver = false});
 
   final List<Transaction> txns;
   final int? accountId;
 
+  /// Builds a sliver, to scroll as part of a larger page.
+  final bool sliver;
+
   @override
   Widget build(BuildContext context) {
-    if (txns.isEmpty) return const _Empty('No transactions in this period');
+    if (txns.isEmpty) return _Empty.of('No transactions in this period', sliver: sliver);
     // Rows are described first and built only when scrolled into view.
     final rows = <Widget Function(BuildContext)>[
       for (final (i, day) in groupByDay(txns).indexed) ...[
@@ -149,6 +155,12 @@ class DayList extends StatelessWidget {
         for (final t in day.transactions) (_) => TransactionTile(t),
       ],
     ];
+    if (sliver) {
+      return SliverPadding(
+        padding: const EdgeInsets.only(bottom: 88),
+        sliver: SliverList.builder(itemCount: rows.length, itemBuilder: (context, i) => rows[i](context)),
+      );
+    }
     return ListView.builder(
       padding: const EdgeInsets.only(bottom: 88),
       itemCount: rows.length,
@@ -289,30 +301,41 @@ class _MonthlyView extends ConsumerWidget {
 /// The twelve months of [year], each with money in, out and the difference.
 /// [totals] is keyed by `YYYY-MM`; missing months show zero.
 class MonthList extends StatelessWidget {
-  const MonthList(this.year, this.totals, {super.key});
+  const MonthList(this.year, this.totals, {super.key, this.sliver = false});
 
   final int year;
   final Map<String, (int, int)> totals;
 
+  /// Builds a sliver, to scroll as part of a larger page.
+  final bool sliver;
+
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.only(bottom: 88),
-    children: [
-      for (final month in [for (var m = 1; m <= 12; m++) DateTime(year, m)])
-        if (totals[monthKey(month)] ?? (0, 0) case (final moneyIn, final moneyOut))
-          ListTile(
-            title: Text(DateFormat('MMMM').format(month)),
-            subtitle: Wrap(
-              spacing: 16,
-              children: [
-                MoneyText(moneyIn, tone: MoneyTone.income),
-                MoneyText(moneyOut, tone: MoneyTone.expense),
-              ],
-            ),
-            trailing: MoneyText(moneyIn - moneyOut, tone: MoneyTone.signed),
+  Widget build(BuildContext context) {
+    const padding = EdgeInsets.only(bottom: 88);
+    final rows = _rows();
+    return sliver
+        ? SliverPadding(
+            padding: padding,
+            sliver: SliverList.list(children: rows),
+          )
+        : ListView(padding: padding, children: rows);
+  }
+
+  List<Widget> _rows() => [
+    for (final month in [for (var m = 1; m <= 12; m++) DateTime(year, m)])
+      if (totals[monthKey(month)] ?? (0, 0) case (final moneyIn, final moneyOut))
+        ListTile(
+          title: Text(DateFormat('MMMM').format(month)),
+          subtitle: Wrap(
+            spacing: 16,
+            children: [
+              MoneyText(moneyIn, tone: MoneyTone.income),
+              MoneyText(moneyOut, tone: MoneyTone.expense),
+            ],
           ),
-    ],
-  );
+          trailing: MoneyText(moneyIn - moneyOut, tone: MoneyTone.signed),
+        ),
+  ];
 }
 
 class _CellAmount extends StatelessWidget {
@@ -331,6 +354,9 @@ class _CellAmount extends StatelessWidget {
 
 class _Empty extends StatelessWidget {
   const _Empty(this.message);
+
+  static Widget of(String message, {required bool sliver}) =>
+      sliver ? SliverFillRemaining(hasScrollBody: false, child: _Empty(message)) : _Empty(message);
 
   final String message;
 

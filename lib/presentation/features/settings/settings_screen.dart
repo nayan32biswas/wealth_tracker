@@ -25,89 +25,91 @@ class SettingsScreen extends ConsumerWidget {
     void open(Widget screen) => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          SettingsSection(
-            title: 'Data',
-            children: [
-              ListTile(title: const Text('Categories'), onTap: () => open(const CategoriesScreen())),
-              ListTile(title: const Text('Accounts and groups'), onTap: () => open(const AccountsSettingsScreen())),
-              ListTile(title: const Text('Recurring'), onTap: () => open(const RecurringScreen())),
-            ],
-          ),
-          SettingsSection(
-            title: 'Preferences',
-            children: [
-              ListTile(
-                title: const Text('Currency'),
-                subtitle: Text('${settings.currencySymbol} · ${settings.currencyCode}'),
-                onTap: () async {
-                  final edited = await showDialog<AppSettings>(
-                    context: context,
-                    builder: (_) => _CurrencyDialog(settings),
-                  );
-                  if (edited != null) await save(edited);
-                },
-              ),
-              ListTile(
-                title: const Text('First day of week'),
-                subtitle: Text(_weekdayName(settings.weekStart)),
-                onTap: () async {
-                  final day = await _pick(context, 'First day of week', [
-                    for (var d = DateTime.monday; d <= DateTime.sunday; d++) (d, _weekdayName(d)),
-                  ]);
-                  if (day != null) await save(settings.copyWith(weekStart: day));
-                },
-              ),
-              ListTile(
-                title: const Text('First day of month'),
-                subtitle: Text('Day ${settings.monthStartDay}'),
-                onTap: () async {
-                  final day = await _pick(context, 'First day of month', [for (var d = 1; d <= 28; d++) (d, '$d')]);
-                  if (day != null) await save(settings.copyWith(monthStartDay: day));
-                },
-              ),
-            ],
-          ),
-          const BackupSettings(),
-          const SecuritySettings(),
-          if (kDebugMode)
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          children: [
             SettingsSection(
-              title: 'Developer',
+              title: 'Data',
+              children: [
+                ListTile(title: const Text('Categories'), onTap: () => open(const CategoriesScreen())),
+                ListTile(title: const Text('Accounts and groups'), onTap: () => open(const AccountsSettingsScreen())),
+                ListTile(title: const Text('Recurring'), onTap: () => open(const RecurringScreen())),
+              ],
+            ),
+            SettingsSection(
+              title: 'Preferences',
               children: [
                 ListTile(
-                  title: const Text('Load demo data'),
-                  subtitle: const Text('Fills the ledger with sample entries'),
-                  onTap: () => guarded(context, () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final hasData = await repos.transactions.hasAny();
-                    if (!context.mounted) return;
-                    final choice = await showDialog<EditResult<(int, bool)>>(
+                  title: const Text('Currency'),
+                  subtitle: Text('${settings.currencySymbol} · ${settings.currencyCode}'),
+                  onTap: () async {
+                    final edited = await showDialog<AppSettings>(
                       context: context,
-                      builder: (_) => _DemoDataDialog(hasData: hasData),
+                      builder: (_) => _CurrencyDialog(settings),
                     );
-                    if (choice == null || !context.mounted) return;
-                    final (months, reset) = choice.$2!;
-                    // One transaction: much faster than a write per entry, and a
-                    // failure part-way leaves the ledger as it was.
-                    await whileBusy(
-                      context,
-                      'Loading demo data…',
-                      repos.inTransaction(() async {
-                        if (reset) await repos.resetToStarter();
-                        await loadDemoData(repos, ref.read(clockProvider)(), months: months);
-                      }),
-                    );
-                    messenger.showSnackBar(
-                      SnackBar(content: Text('Loaded $months ${months == 1 ? 'month' : 'months'} of demo data.')),
-                    );
-                  }),
+                    if (edited != null) await save(edited);
+                  },
+                ),
+                ListTile(
+                  title: const Text('First day of week'),
+                  subtitle: Text(_weekdayName(settings.weekStart)),
+                  onTap: () async {
+                    final day = await _pick(context, 'First day of week', [
+                      for (var d = DateTime.monday; d <= DateTime.sunday; d++) (d, _weekdayName(d)),
+                    ]);
+                    if (day != null) await save(settings.copyWith(weekStart: day));
+                  },
+                ),
+                ListTile(
+                  title: const Text('First day of month'),
+                  subtitle: Text('Day ${settings.monthStartDay}'),
+                  onTap: () async {
+                    final day = await _pick(context, 'First day of month', [for (var d = 1; d <= 28; d++) (d, '$d')]);
+                    if (day != null) await save(settings.copyWith(monthStartDay: day));
+                  },
                 ),
               ],
             ),
-          const SizedBox(height: 24),
-        ],
+            const BackupSettings(),
+            const SecuritySettings(),
+            if (kDebugMode)
+              SettingsSection(
+                title: 'Developer',
+                children: [
+                  ListTile(
+                    title: const Text('Load demo data'),
+                    subtitle: const Text('Fills the ledger with sample entries'),
+                    onTap: () => guarded(context, () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final hasData = await repos.transactions.hasAny();
+                      if (!context.mounted) return;
+                      final choice = await showDialog<EditResult<(int, bool)>>(
+                        context: context,
+                        builder: (_) => _DemoDataDialog(hasData: hasData),
+                      );
+                      if (choice == null || !context.mounted) return;
+                      final (months, reset) = choice.$2!;
+                      // One transaction: much faster than a write per entry, and a
+                      // failure part-way leaves the ledger as it was.
+                      await whileBusy(
+                        context,
+                        'Loading demo data…',
+                        repos.inTransaction(() async {
+                          if (reset) await repos.resetToStarter();
+                          await loadDemoData(repos, ref.read(clockProvider)(), months: months);
+                        }),
+                      );
+                      messenger.showSnackBar(
+                        SnackBar(content: Text('Loaded $months ${months == 1 ? 'month' : 'months'} of demo data.')),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
