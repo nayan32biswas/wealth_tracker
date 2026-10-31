@@ -135,7 +135,7 @@ class SettingsSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(32, 24, 32, 8),
+          padding: const EdgeInsets.fromLTRB(32, 16, 32, 4),
           child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(color: scheme.primary)),
         ),
         Card(
