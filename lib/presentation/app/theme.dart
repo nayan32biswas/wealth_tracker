@@ -6,6 +6,10 @@ ThemeData buildTheme() {
   final scheme = ColorScheme.fromSeed(seedColor: _seed, brightness: Brightness.dark);
   return ThemeData(
     colorScheme: scheme,
+    // Phones are short on height: tighter rows and buttons everywhere.
+    // Tap targets keep their 48 px minimum.
+    visualDensity: VisualDensity.compact,
+    navigationBarTheme: const NavigationBarThemeData(height: 64),
     cardTheme: const CardThemeData(elevation: 0, margin: EdgeInsets.zero),
     inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
     listTileTheme: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 16)),

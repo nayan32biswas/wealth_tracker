@@ -26,6 +26,12 @@ void main() {
     }
   });
 
+  testWidgets('the tab bar is a compact 64 px', (tester) async {
+    await pumpApp(tester);
+
+    expect(tester.getSize(find.byType(NavigationBar)).height, 64);
+  });
+
   testWidgets('back on a main tab closes the app without asking', (tester) async {
     await pumpApp(tester);
     final closes = <MethodCall>[];
