@@ -13,6 +13,7 @@ The screenshots in `doc/Images/` show which features to include. They are not a 
 | v1 features | Transactions (daily / calendar / monthly views), stats, accounts with net worth, settings |
 | Liabilities | An account group can be a liability (card, loan) |
 | Design | Our own. Opens on Activity, Material 3, dark theme only (same look for everyone) |
+| Orientation | Portrait only. On iPad this means full screen, no split view (Apple requires it to lock orientation) |
 | Add transaction | Full-screen form. Amount and fee use an in-app number pad |
 | Extras | Recurring transactions; SQLite and CSV import/export |
 | Keep simple | No icons, no user-picked colors, no templates. Lists follow `sort_order` |
