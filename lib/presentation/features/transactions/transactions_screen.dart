@@ -95,7 +95,8 @@ class TotalsBar extends StatelessWidget {
         (label: 'Income', amount: totals.income, tone: MoneyTone.income),
         (label: 'Expense', amount: totals.expense, tone: MoneyTone.expense),
         (label: 'Net', amount: totals.net, tone: MoneyTone.signed),
-      ];
+      ],
+      _gap = 12;
 
   /// One account: transfers count, so Net is how much the balance moved.
   TotalsBar.account(AccountTotals totals, {super.key})
@@ -103,9 +104,11 @@ class TotalsBar extends StatelessWidget {
         (label: 'In', amount: totals.inflow, tone: MoneyTone.income),
         (label: 'Out', amount: totals.outflow, tone: MoneyTone.expense),
         (label: 'Net', amount: totals.net, tone: MoneyTone.signed),
-      ];
+      ],
+      _gap = 6;
 
   final List<_Cell> _cells;
+  final double _gap;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +127,7 @@ class TotalsBar extends StatelessWidget {
       ),
     );
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: EdgeInsets.symmetric(vertical: _gap),
       child: Row(children: [for (final c in _cells) cell(c.label, c.amount, c.tone)]),
     );
   }

@@ -139,12 +139,12 @@ class AccountDetailScreen extends ConsumerWidget {
     // One scroll: the balance and totals scroll away with the entries so the
     // list gets the screen, while the period bar stays pinned to change it.
     return Scaffold(
-      appBar: AppBar(title: Text(account.asset.name)),
+      appBar: AppBar(toolbarHeight: 48, titleTextStyle: text.titleMedium, title: Text(account.asset.name)),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Row(
                 spacing: 16,
                 children: [
