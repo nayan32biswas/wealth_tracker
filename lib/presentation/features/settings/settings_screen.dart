@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../../domain/models/app_settings.dart';
 import '../../../domain/services/demo_data.dart';
-import '../../../temporary/old_app_import/old_app_import_tile.dart';
 import '../../app/providers.dart';
 import '../../widgets/common.dart';
 import '../security/security_settings.dart';
@@ -73,11 +72,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const BackupSettings(),
           const SecuritySettings(),
-          SettingsSection(
-            title: 'Developer',
-            children: [
-              const OldAppImportTile(), // Temporary: remove with lib/temporary/old_app_import/.
-              if (kDebugMode)
+          if (kDebugMode)
+            SettingsSection(
+              title: 'Developer',
+              children: [
                 ListTile(
                   title: const Text('Load demo data'),
                   subtitle: const Text('Fills the ledger with sample entries'),
@@ -106,8 +104,8 @@ class SettingsScreen extends ConsumerWidget {
                     );
                   }),
                 ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 24),
         ],
       ),
