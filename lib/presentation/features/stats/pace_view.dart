@@ -46,7 +46,7 @@ class PaceView extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PeriodBar(statsPeriodProvider, menuInset: statsMenuInset),
-          if (txns != null) ...[const SizedBox(height: 24), _PaceSummary(txns, period, today, money)],
+          if (txns != null) ...[const SizedBox(height: 12), _PaceSummary(txns, period, today, money)],
         ],
       ),
     );
@@ -79,9 +79,9 @@ class _PaceSummary extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(running ? 'Spent so far' : 'Spent', style: text.labelLarge),
-        MoneyText(soFar.now, style: text.headlineMedium),
+        MoneyText(soFar.now, style: text.headlineSmall),
         Text(running ? '$compared by this point' : compared, style: text.bodyMedium),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         ChartLegend([(names[0], scheme.series2), (names[1], scheme.outline)], lines: true),
         const SizedBox(height: 12),
         SizedBox(height: 200, child: _PaceChart(now, then, period, names, money)),
