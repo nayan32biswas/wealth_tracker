@@ -11,7 +11,11 @@ void main() {
 
   testWidgets('the app starts and every tab opens', (tester) async {
     await app.main();
-    await tester.pumpAndSettle();
+    // The app shows a blank screen until it has read the lock setting from
+    // the keychain, which happens off the test's clock.
+    for (var i = 0; i < 50 && find.byTooltip('Add transaction').evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     expect(find.byTooltip('Add transaction'), findsOneWidget);
 
