@@ -594,6 +594,44 @@ void main() {
       expect(find.text('Dinner out'), findsOneWidget);
     });
 
+    testWidgets('on a narrow phone a day with large amounts stays inside its calendar cell', (tester) async {
+      await pumpApp(
+        tester,
+        arrange: (repos) async {
+          final assets = {for (final a in await repos.assets.all()) a.name: a.id};
+          final categories = {for (final c in await repos.categories.all()) c.name: c.id};
+          for (final (type, amount, category) in [
+            (TransactionType.income, 12000000, 'Salary'),
+            (TransactionType.expense, 118900, 'Food'),
+          ]) {
+            await repos.transactions.save(
+              Transaction(
+                id: 0,
+                type: type,
+                amount: amount,
+                assetId: assets['Bank Account']!,
+                categoryId: categories[category],
+                dateTime: DateTime(2026, 9, 1, 9),
+              ),
+            );
+          }
+        },
+      );
+      tester.view.physicalSize = const Size(320, 640);
+      tester.view.devicePixelRatio = 1;
+      await tester.pumpAndSettle();
+      await openTab(tester, 'Activity');
+      await choosePeriodKind(tester, 'Calendar');
+
+      expect(tester.takeException(), isNull);
+      final cell = tester.getRect(find.byKey(const ValueKey('day-2026-09-01')));
+      for (final amount in ['120,000.00', '1,189.00']) {
+        final rect = tester.getRect(find.text(amount));
+        expect(rect.bottom, lessThanOrEqualTo(cell.bottom));
+        expect(rect.right, lessThanOrEqualTo(cell.right));
+      }
+    });
+
     testWidgets('monthly view shows each month of the year', (tester) async {
       await pumpApp(tester, arrange: twoDays);
       await openTab(tester, 'Activity');

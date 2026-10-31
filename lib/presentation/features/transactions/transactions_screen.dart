@@ -240,10 +240,12 @@ class _CalendarViewState extends ConsumerState<_CalendarView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('${day.day}', style: small),
+                // A day cell is narrow on a phone, so large amounts shrink to
+                // one line instead of wrapping out of the cell.
                 if ((totals?.income ?? 0) > 0)
-                  Text(money.format(totals!.income, withSymbol: false), style: small?.copyWith(color: scheme.income)),
+                  _CellAmount(money.format(totals!.income, withSymbol: false), small?.copyWith(color: scheme.income)),
                 if ((totals?.expense ?? 0) > 0)
-                  Text(money.format(totals!.expense, withSymbol: false), style: small?.copyWith(color: scheme.expense)),
+                  _CellAmount(money.format(totals!.expense, withSymbol: false), small?.copyWith(color: scheme.expense)),
               ],
             ),
           ),
@@ -310,6 +312,20 @@ class MonthList extends StatelessWidget {
             trailing: MoneyText(moneyIn - moneyOut, tone: MoneyTone.signed),
           ),
     ],
+  );
+}
+
+class _CellAmount extends StatelessWidget {
+  const _CellAmount(this.text, this.style);
+
+  final String text;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) => FittedBox(
+    fit: BoxFit.scaleDown,
+    alignment: Alignment.centerLeft,
+    child: Text(text, style: style, maxLines: 1),
   );
 }
 
