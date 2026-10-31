@@ -154,7 +154,8 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
   }
 }
 
-/// One ranked category: its name, share of the total as a bar, and amount.
+/// One ranked category on one line: its share of the total as a badge, its
+/// name and its amount.
 class _ShareRow extends StatelessWidget {
   const _ShareRow({required this.name, required this.share, required this.color, required this.onTap});
 
@@ -169,28 +170,20 @@ class _ShareRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 6,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          spacing: 12,
           children: [
-            Row(
-              spacing: 8,
-              children: [
-                Expanded(child: Text(name, style: text.bodyLarge)),
-                Text('${share.percent.round()}%', style: text.labelMedium),
-                MoneyText(share.total, style: text.bodyLarge),
-              ],
+            // Fixed width so every name starts at the same place, even at 100%.
+            Container(
+              width: 48,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
+              child: Text('${share.percent.round()}%', style: text.labelLarge?.copyWith(color: Colors.black)),
             ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: share.percent / 100,
-                minHeight: 8,
-                color: color,
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-            ),
+            Expanded(child: Text(name, style: text.bodyLarge)),
+            MoneyText(share.total, style: text.bodyLarge),
           ],
         ),
       ),

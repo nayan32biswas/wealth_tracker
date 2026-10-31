@@ -67,6 +67,21 @@ void main() {
     expect(line, lessThan(tester.getTopLeft(find.text('Transport')).dy));
   });
 
+  testWidgets('a category row is one line: share badge, name, then amount', (tester) async {
+    await pumpApp(tester, arrange: spending);
+    await openTab(tester, 'Stats');
+
+    final badge = tester.getCenter(find.text('80%'));
+    final name = tester.getCenter(find.text('Food'));
+    final amount = tester.getCenter(find.text('৳400.00'));
+    expect(badge.dx, lessThan(name.dx));
+    expect(name.dx, lessThan(amount.dx));
+    expect((badge.dy - name.dy).abs(), lessThan(2));
+    expect((amount.dy - name.dy).abs(), lessThan(2));
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(tester.getTopLeft(find.text('Food')).dx, tester.getTopLeft(find.text('Transport')).dx);
+  });
+
   testWidgets('income tab shows income categories', (tester) async {
     await pumpApp(tester, arrange: spending);
     await openTab(tester, 'Stats');
