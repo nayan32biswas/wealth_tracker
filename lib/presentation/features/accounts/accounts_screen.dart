@@ -135,35 +135,54 @@ class AccountDetailScreen extends ConsumerWidget {
     final period = ref.watch(_accountPeriodProvider);
     final txns = ref.watch(_accountTransactionsProvider(id)).value ?? const <Transaction>[];
     final monthly = period.kind == PeriodKind.year;
+    final text = Theme.of(context).textTheme;
+    // One scroll: the balance and totals scroll away with the entries so the
+    // list gets the screen, while the period bar stays pinned to change it.
     return Scaffold(
       appBar: AppBar(title: Text(account.asset.name)),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Text(group.isLiability ? 'Owed' : 'Balance', style: Theme.of(context).textTheme.labelLarge),
-                MoneyText(
-                  owedOrHeld(group, balance),
-                  tone: MoneyTone.signed,
-                  style: Theme.of(context).textTheme.headlineMedium,
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Row(
+                spacing: 16,
+                children: [
+                  Text(group.isLiability ? 'Owed' : 'Balance', style: text.labelLarge),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: MoneyText(owedOrHeld(group, balance), tone: MoneyTone.signed, style: text.titleLarge),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SliverToBoxAdapter(child: Divider(height: 1)),
+          PinnedHeaderSliver(
+            child: ColoredBox(
+              color: Theme.of(context).colorScheme.surface,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: PeriodBar(
+                  _accountPeriodProvider,
+                  options: [for (final v in _views) v.option],
+                  selected: (monthly ? ActivityView.monthly : ActivityView.daily).option,
                 ),
-              ],
+              ),
             ),
           ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: PeriodBar(
-              _accountPeriodProvider,
-              options: [for (final v in _views) v.option],
-              selected: (monthly ? ActivityView.monthly : ActivityView.daily).option,
-            ),
+          SliverToBoxAdapter(
+            child: Column(children: [TotalsBar.account(AccountTotals.of(txns, id)), const Divider(height: 1)]),
           ),
-          TotalsBar.account(AccountTotals.of(txns, id)),
-          const Divider(height: 1),
-          Expanded(child: monthly ? MonthList(period.start.year, _byMonth(txns, id)) : DayList(txns, accountId: id)),
+          if (monthly)
+            MonthList(period.start.year, _byMonth(txns, id), sliver: true)
+          else
+            DayList(txns, accountId: id, sliver: true),
         ],
       ),
     );
