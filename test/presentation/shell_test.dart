@@ -42,6 +42,15 @@ void main() {
     expect(tester.getSize(find.byType(NavigationBar)).height, 64);
   });
 
+  testWidgets('text is 10% smaller than the Material default', (tester) async {
+    await pumpApp(tester);
+
+    final text = Theme.of(tester.element(find.byType(NavigationBar))).textTheme;
+    expect(text.bodyMedium!.fontSize, closeTo(14 * 0.9, 0.01));
+    expect(text.titleLarge!.fontSize, closeTo(22 * 0.9, 0.01));
+    expect(text.headlineSmall!.fontSize, closeTo(24 * 0.9, 0.01));
+  });
+
   testWidgets('back on a main tab closes the app without asking', (tester) async {
     await pumpApp(tester);
     final closes = <MethodCall>[];

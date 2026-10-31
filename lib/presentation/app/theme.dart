@@ -9,12 +9,18 @@ ThemeData buildTheme() {
     // Phones are short on height: tighter rows and buttons everywhere.
     // Tap targets keep their 48 px minimum.
     visualDensity: VisualDensity.compact,
+    // Material's default sizes read large on a phone: every text style is
+    // 10% smaller. The phone's own text size setting still applies on top.
+    textTheme: _smallerText,
+    primaryTextTheme: _smallerText,
     navigationBarTheme: const NavigationBarThemeData(height: 64),
     cardTheme: const CardThemeData(elevation: 0, margin: EdgeInsets.zero),
     inputDecorationTheme: const InputDecorationTheme(border: OutlineInputBorder()),
     listTileTheme: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 16)),
   );
 }
+
+final _smallerText = Typography.englishLike2021.apply(fontSizeFactor: 0.9);
 
 extension MoneyColors on ColorScheme {
   Color get income => const Color(0xFF81C784);
