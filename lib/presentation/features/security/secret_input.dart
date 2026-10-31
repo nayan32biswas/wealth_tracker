@@ -108,72 +108,81 @@ class _SecretInputState extends State<SecretInput> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          const Spacer(),
-          Text(widget.title, style: Theme.of(context).textTheme.headlineSmall),
-          if (widget.hint != null) ...[const SizedBox(height: 8), Text(widget.hint!)],
-          const SizedBox(height: 24),
-          if (_isPin)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              spacing: 12,
+    // Fills the screen with the pad at the bottom, but scrolls instead of
+    // cutting off the button when the screen is too short for it all.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: (constraints.maxHeight - 48).clamp(0, double.infinity)),
+          child: IntrinsicHeight(
+            child: Column(
               children: [
-                for (var i = 0; i < 8; i++)
-                  if (i < _pin.length || i < 4)
-                    Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: i < _pin.length ? scheme.primary : null,
-                        border: Border.all(color: scheme.outline),
+                const Spacer(),
+                Text(widget.title, style: Theme.of(context).textTheme.headlineSmall),
+                if (widget.hint != null) ...[const SizedBox(height: 8), Text(widget.hint!)],
+                const SizedBox(height: 24),
+                if (_isPin)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    spacing: 12,
+                    children: [
+                      for (var i = 0; i < 8; i++)
+                        if (i < _pin.length || i < 4)
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: i < _pin.length ? scheme.primary : null,
+                              border: Border.all(color: scheme.outline),
+                            ),
+                          ),
+                    ],
+                  )
+                else
+                  TextField(
+                    controller: _password,
+                    focusNode: _focus,
+                    obscureText: !_shown,
+                    enableSuggestions: false,
+                    autocorrect: false,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        tooltip: _shown ? 'Hide password' : 'Show password',
+                        icon: Icon(_shown ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _shown = !_shown),
                       ),
                     ),
-              ],
-            )
-          else
-            TextField(
-              controller: _password,
-              focusNode: _focus,
-              obscureText: !_shown,
-              enableSuggestions: false,
-              autocorrect: false,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                suffixIcon: IconButton(
-                  tooltip: _shown ? 'Hide password' : 'Show password',
-                  icon: Icon(_shown ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _shown = !_shown),
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _submit(),
+                  ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 24,
+                  child: widget.error == null ? null : Text(widget.error!, style: TextStyle(color: scheme.error)),
                 ),
-              ),
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _submit(),
+                if (_isPin) ...[
+                  const Spacer(),
+                  PinPad(
+                    extraKey: widget.extraKey,
+                    onDigit: (d) => setState(() => _pin = _pin.length < 8 ? '$_pin$d' : _pin),
+                    onBackspace: () => setState(() => _pin = _pin.isEmpty ? _pin : _pin.substring(0, _pin.length - 1)),
+                  ),
+                  const SizedBox(height: 16),
+                ] else ...[
+                  ?widget.extraKey,
+                  const Spacer(),
+                ],
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(onPressed: _valid ? _submit : null, child: Text(widget.submitLabel)),
+                ),
+              ],
             ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 24,
-            child: widget.error == null ? null : Text(widget.error!, style: TextStyle(color: scheme.error)),
           ),
-          if (_isPin) ...[
-            const Spacer(),
-            PinPad(
-              extraKey: widget.extraKey,
-              onDigit: (d) => setState(() => _pin = _pin.length < 8 ? '$_pin$d' : _pin),
-              onBackspace: () => setState(() => _pin = _pin.isEmpty ? _pin : _pin.substring(0, _pin.length - 1)),
-            ),
-            const SizedBox(height: 16),
-          ] else ...[
-            ?widget.extraKey,
-            const Spacer(),
-          ],
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(onPressed: _valid ? _submit : null, child: Text(widget.submitLabel)),
-          ),
-        ],
+        ),
       ),
     );
   }
