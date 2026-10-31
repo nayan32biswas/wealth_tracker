@@ -6,7 +6,6 @@ import '../../../domain/models/transactions.dart';
 import '../../../domain/services/calendar.dart';
 import '../../../domain/services/reports.dart';
 import '../../app/providers.dart';
-import '../../app/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/period_switcher.dart';
 import 'category_screen.dart';
@@ -96,7 +95,6 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
     final names = ref.watch(categoryNamesProvider).value ?? const {};
     final shares = categoryBreakdown(txns, _type);
     final total = shares.fold(0, (sum, s) => sum + s.total);
-    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
     return Padding(
@@ -133,7 +131,6 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
             _ShareRow(
               name: names[s.categoryId] ?? 'No category',
               share: s,
-              color: _type == TransactionType.expense ? scheme.series2 : scheme.series1,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(
@@ -157,16 +154,16 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
 /// One ranked category on one line: its share of the total as a badge, its
 /// name and its amount.
 class _ShareRow extends StatelessWidget {
-  const _ShareRow({required this.name, required this.share, required this.color, required this.onTap});
+  const _ShareRow({required this.name, required this.share, required this.onTap});
 
   final String name;
   final CategoryShare share;
-  final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -179,8 +176,8 @@ class _ShareRow extends StatelessWidget {
               width: 48,
               padding: const EdgeInsets.symmetric(vertical: 4),
               alignment: Alignment.center,
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6)),
-              child: Text('${share.percent.round()}%', style: text.labelLarge?.copyWith(color: Colors.black)),
+              decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(6)),
+              child: Text('${share.percent.round()}%', style: text.labelLarge),
             ),
             Expanded(child: Text(name, style: text.bodyLarge)),
             MoneyText(share.total, style: text.bodyLarge),
