@@ -9,6 +9,7 @@ import 'package:wealthtracker/domain/services/calendar.dart';
 import 'package:wealthtracker/presentation/features/stats/pace_view.dart';
 import 'package:wealthtracker/presentation/features/stats/stats_screen.dart';
 import 'package:wealthtracker/presentation/features/transactions/transactions_screen.dart';
+import 'package:wealthtracker/presentation/widgets/period_switcher.dart';
 
 import 'harness.dart';
 
@@ -53,6 +54,52 @@ void main() {
     expect(find.text('20%'), findsOneWidget);
     expect(find.text('৳400.00'), findsOneWidget);
     expect(find.text('Health'), findsNothing);
+  });
+
+  testWidgets('a thin line separates category rows, with none above the first or below the last', (tester) async {
+    await pumpApp(tester, arrange: spending);
+    await openTab(tester, 'Stats');
+
+    final view = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_CategoriesView');
+    final lines = find.descendant(of: view, matching: find.byType(Divider));
+    expect(lines, findsOneWidget);
+    final line = tester.getCenter(lines).dy;
+    expect(line, greaterThan(tester.getBottomLeft(find.text('Food')).dy));
+    expect(line, lessThan(tester.getTopLeft(find.text('Transport')).dy));
+  });
+
+  testWidgets('a category row is one line: share badge, name, then amount', (tester) async {
+    await pumpApp(tester, arrange: spending);
+    await openTab(tester, 'Stats');
+
+    final badge = tester.getCenter(find.text('80%'));
+    final name = tester.getCenter(find.text('Food'));
+    final amount = tester.getCenter(find.text('৳400.00'));
+    expect(badge.dx, lessThan(name.dx));
+    expect(name.dx, lessThan(amount.dx));
+    expect((badge.dy - name.dy).abs(), lessThan(2));
+    expect((amount.dy - name.dy).abs(), lessThan(2));
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(tester.getTopLeft(find.text('Food')).dx, tester.getTopLeft(find.text('Transport')).dx);
+  });
+
+  testWidgets('the expense/income toggle sits right under the period bar, no padding around it', (tester) async {
+    await pumpApp(tester, arrange: spending);
+    await openTab(tester, 'Stats');
+
+    final toggle = find.byType(SegmentedButton<TransactionType>);
+    expect(tester.getTopLeft(toggle).dy, tester.getBottomLeft(find.byType(PeriodBar)).dy);
+    expect(tester.getSize(toggle).height, lessThanOrEqualTo(32));
+  });
+
+  testWidgets('the total is one line: label left, amount right in line with the category amounts', (tester) async {
+    await pumpApp(tester, arrange: spending);
+    await openTab(tester, 'Stats');
+
+    final label = tester.getCenter(find.text('Total spent'));
+    final total = find.text('৳500.00');
+    expect((tester.getCenter(total).dy - label.dy).abs(), lessThan(2));
+    expect(tester.getTopRight(total).dx, tester.getTopRight(find.text('৳400.00')).dx);
   });
 
   testWidgets('income tab shows income categories', (tester) async {
@@ -201,6 +248,16 @@ void main() {
 
     expect(find.text('Food'), findsOneWidget);
     expect(find.byType(LineChart), findsNothing);
+  });
+
+  testWidgets('section titles are shaded apart from their reports', (tester) async {
+    await pumpApp(tester);
+    await openTab(tester, 'Stats');
+
+    final shade = Theme.of(tester.element(find.byType(StatsScreen))).colorScheme.surfaceContainerHigh;
+    for (final title in ['Categories', 'Spending pace', 'Trends']) {
+      expect(tester.widget<ListTile>(find.widgetWithText(ListTile, title)).tileColor, shade, reason: title);
+    }
   });
 
   testWidgets('opening a section closes the one that was open', (tester) async {

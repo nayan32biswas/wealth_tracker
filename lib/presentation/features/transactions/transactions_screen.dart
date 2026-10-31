@@ -150,7 +150,8 @@ class DayList extends StatelessWidget {
     // Rows are described first and built only when scrolled into view.
     final rows = <Widget Function(BuildContext)>[
       for (final (i, day) in groupByDay(txns).indexed) ...[
-        if (i > 0) (_) => const SizedBox(height: 16),
+        // Shaded so where one day ends and the next starts is easy to see.
+        if (i > 0) (_) => const SizedBox(height: 10, child: ColoredBox(color: Colors.black)),
         (context) => _dayHeader(context, day),
         for (final t in day.transactions) (_) => TransactionTile(t),
       ],

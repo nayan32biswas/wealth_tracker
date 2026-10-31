@@ -6,7 +6,6 @@ import '../../../domain/models/transactions.dart';
 import '../../../domain/services/calendar.dart';
 import '../../../domain/services/reports.dart';
 import '../../app/providers.dart';
-import '../../app/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/period_switcher.dart';
 import 'category_screen.dart';
@@ -64,8 +63,10 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           children: [
             for (final (i, section) in _sections.indexed) ...[
               if (i > 0) const Divider(height: 1),
+              // Shaded so each section's title stands apart from its report.
               ListTile(
                 dense: true,
+                tileColor: Theme.of(context).colorScheme.surfaceContainerHigh,
                 title: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
                 trailing: Icon(_open == i ? Icons.expand_less : Icons.expand_more),
                 onTap: () => setState(() => _open = _open == i ? null : i),
@@ -96,7 +97,6 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
     final names = ref.watch(categoryNamesProvider).value ?? const {};
     final shares = categoryBreakdown(txns, _type);
     final total = shares.fold(0, (sum, s) => sum + s.total);
-    final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
     return Padding(
@@ -105,8 +105,10 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PeriodBar(statsPeriodProvider, menuInset: statsMenuInset),
-          const SizedBox(height: 4),
           SegmentedButton<TransactionType>(
+            // The toggle spans the width, so it is easy to hit without the
+            // extra invisible padding around it.
+            style: const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
             segments: const [
               ButtonSegment(value: TransactionType.expense, label: Text('Expense')),
               ButtonSegment(value: TransactionType.income, label: Text('Income')),
@@ -115,9 +117,22 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
             showSelectedIcon: false,
             onSelectionChanged: (s) => setState(() => _type = s.single),
           ),
-          const SizedBox(height: 12),
-          Text(_type == TransactionType.expense ? 'Total spent' : 'Total received', style: text.labelLarge),
-          MoneyText(total, style: text.headlineSmall),
+          const SizedBox(height: 8),
+          Row(
+            spacing: 16,
+            children: [
+              Text(_type == TransactionType.expense ? 'Total spent' : 'Total received', style: text.labelLarge),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: MoneyText(total, style: text.titleLarge),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           if (shares.isEmpty)
             Padding(
@@ -128,11 +143,11 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
                 ),
               ),
             ),
-          for (final s in shares)
+          for (final (i, s) in shares.indexed) ...[
+            if (i > 0) const Divider(height: 1),
             _ShareRow(
               name: names[s.categoryId] ?? 'No category',
               share: s,
-              color: _type == TransactionType.expense ? scheme.series2 : scheme.series1,
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute<void>(
@@ -146,49 +161,43 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
   }
 }
 
-/// One ranked category: its name, share of the total as a bar, and amount.
+/// One ranked category on one line: its share of the total as a badge, its
+/// name and its amount.
 class _ShareRow extends StatelessWidget {
-  const _ShareRow({required this.name, required this.share, required this.color, required this.onTap});
+  const _ShareRow({required this.name, required this.share, required this.onTap});
 
   final String name;
   final CategoryShare share;
-  final Color color;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: 6,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          spacing: 12,
           children: [
-            Row(
-              spacing: 8,
-              children: [
-                Expanded(child: Text(name, style: text.bodyLarge)),
-                Text('${share.percent.round()}%', style: text.labelMedium),
-                MoneyText(share.total, style: text.bodyLarge),
-              ],
+            // Fixed width so every name starts at the same place, even at 100%.
+            Container(
+              width: 48,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(6)),
+              child: Text('${share.percent.round()}%', style: text.labelLarge),
             ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: share.percent / 100,
-                minHeight: 8,
-                color: color,
-                backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-              ),
-            ),
+            Expanded(child: Text(name, style: text.bodyLarge)),
+            MoneyText(share.total, style: text.bodyLarge),
           ],
         ),
       ),
