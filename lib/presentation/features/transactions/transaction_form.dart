@@ -392,7 +392,16 @@ class _PadValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
+    onTap: () {
+      onTap();
+      // The pad opens below the form and can cover this box, so once it is
+      // laid out, lift the box (and its helper line) just above it.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          Scrollable.ensureVisible(context, alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd);
+        }
+      });
+    },
     child: InputDecorator(
       isFocused: active,
       decoration: InputDecoration(labelText: label, helperText: helper),
