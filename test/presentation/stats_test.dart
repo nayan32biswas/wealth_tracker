@@ -55,6 +55,18 @@ void main() {
     expect(find.text('Health'), findsNothing);
   });
 
+  testWidgets('a thin line separates category rows, with none above the first or below the last', (tester) async {
+    await pumpApp(tester, arrange: spending);
+    await openTab(tester, 'Stats');
+
+    final view = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_CategoriesView');
+    final lines = find.descendant(of: view, matching: find.byType(Divider));
+    expect(lines, findsOneWidget);
+    final line = tester.getCenter(lines).dy;
+    expect(line, greaterThan(tester.getBottomLeft(find.text('Food')).dy));
+    expect(line, lessThan(tester.getTopLeft(find.text('Transport')).dy));
+  });
+
   testWidgets('income tab shows income categories', (tester) async {
     await pumpApp(tester, arrange: spending);
     await openTab(tester, 'Stats');

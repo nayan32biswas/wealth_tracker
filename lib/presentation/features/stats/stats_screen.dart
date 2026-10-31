@@ -128,7 +128,8 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
                 ),
               ),
             ),
-          for (final s in shares)
+          for (final (i, s) in shares.indexed) ...[
+            if (i > 0) const Divider(height: 1),
             _ShareRow(
               name: names[s.categoryId] ?? 'No category',
               share: s,
@@ -146,6 +147,7 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
                 ),
               ),
             ),
+          ],
         ],
       ),
     );
