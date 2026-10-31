@@ -18,7 +18,7 @@ class AccountsSettingsScreen extends ConsumerWidget {
     String count(int groupId) {
       final shown = assets.where((a) => a.groupId == groupId).length;
       final hidden = archived.where((a) => a.groupId == groupId).length;
-      return '$shown accounts${hidden == 0 ? '' : ' · $hidden archived'}';
+      return '$shown ${shown == 1 ? 'account' : 'accounts'}${hidden == 0 ? '' : ' · $hidden archived'}';
     }
 
     return Scaffold(

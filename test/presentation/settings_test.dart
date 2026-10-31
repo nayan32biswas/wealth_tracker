@@ -217,6 +217,14 @@ void main() {
   });
 
   group('groups and accounts', () {
+    testWidgets('a group counts one account in the singular', (tester) async {
+      await pumpApp(tester);
+      await openSettingsItem(tester, 'Accounts and groups');
+
+      expect(find.text('Asset · 1 account'), findsNWidgets(3));
+      expect(find.text('Liability · 0 accounts'), findsOneWidget);
+    });
+
     testWidgets('adds a liability group', (tester) async {
       final app = await pumpApp(tester);
       await openSettingsItem(tester, 'Accounts and groups');

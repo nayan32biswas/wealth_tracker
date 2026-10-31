@@ -179,12 +179,21 @@ class _CategoryDialogState extends State<_CategoryDialog> {
         decoration: const InputDecoration(labelText: 'Name'),
         onChanged: (_) => setState(() {}),
       ),
+      // The dialog is narrow on a phone: tighter padding and labels that
+      // shrink keep each choice on one line.
       SegmentedButton<FeeType>(
         showSelectedIcon: false,
-        segments: const [
-          ButtonSegment(value: FeeType.none, label: Text('No fee')),
-          ButtonSegment(value: FeeType.percent, label: Text('Percent')),
-          ButtonSegment(value: FeeType.fixed, label: Text('Fixed')),
+        style: const ButtonStyle(padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 4))),
+        segments: [
+          for (final (type, label) in const [
+            (FeeType.none, 'No fee'),
+            (FeeType.percent, 'Percent'),
+            (FeeType.fixed, 'Fixed'),
+          ])
+            ButtonSegment(
+              value: type,
+              label: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1)),
+            ),
         ],
         selected: {_feeType},
         onSelectionChanged: (s) => setState(() {
