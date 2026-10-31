@@ -9,6 +9,7 @@ import 'package:wealthtracker/domain/services/calendar.dart';
 import 'package:wealthtracker/presentation/features/stats/pace_view.dart';
 import 'package:wealthtracker/presentation/features/stats/stats_screen.dart';
 import 'package:wealthtracker/presentation/features/transactions/transactions_screen.dart';
+import 'package:wealthtracker/presentation/widgets/period_switcher.dart';
 
 import 'harness.dart';
 
@@ -80,6 +81,15 @@ void main() {
     expect((amount.dy - name.dy).abs(), lessThan(2));
     expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(tester.getTopLeft(find.text('Food')).dx, tester.getTopLeft(find.text('Transport')).dx);
+  });
+
+  testWidgets('the expense/income toggle sits right under the period bar, no padding around it', (tester) async {
+    await pumpApp(tester, arrange: spending);
+    await openTab(tester, 'Stats');
+
+    final toggle = find.byType(SegmentedButton<TransactionType>);
+    expect(tester.getTopLeft(toggle).dy, tester.getBottomLeft(find.byType(PeriodBar)).dy);
+    expect(tester.getSize(toggle).height, lessThanOrEqualTo(32));
   });
 
   testWidgets('income tab shows income categories', (tester) async {

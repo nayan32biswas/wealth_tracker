@@ -105,8 +105,10 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PeriodBar(statsPeriodProvider, menuInset: statsMenuInset),
-          const SizedBox(height: 4),
           SegmentedButton<TransactionType>(
+            // The toggle spans the width, so it is easy to hit without the
+            // extra invisible padding around it.
+            style: const ButtonStyle(tapTargetSize: MaterialTapTargetSize.shrinkWrap),
             segments: const [
               ButtonSegment(value: TransactionType.expense, label: Text('Expense')),
               ButtonSegment(value: TransactionType.income, label: Text('Income')),
@@ -115,7 +117,7 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
             showSelectedIcon: false,
             onSelectionChanged: (s) => setState(() => _type = s.single),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(_type == TransactionType.expense ? 'Total spent' : 'Total received', style: text.labelLarge),
           MoneyText(total, style: text.headlineSmall),
           const SizedBox(height: 8),
