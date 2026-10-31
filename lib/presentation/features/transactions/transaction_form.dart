@@ -298,7 +298,6 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                   : null,
               active: _padField == _PadField.amount,
               onTap: () => _openPad(_PadField.amount),
-              onCalculator: () => _openCalculator(_PadField.amount),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -333,7 +332,6 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                 helper: 'Total ${money.format(_draft.total)}',
                 active: _padField == _PadField.fee,
                 onTap: () => _openPad(_PadField.fee),
-                onCalculator: () => _openCalculator(_PadField.fee),
               ),
               if (!_editing) ...[
                 const SizedBox(height: 16),
@@ -363,6 +361,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
               child: NumberPad(
                 onKey: _onPadKey,
                 onDone: () => setState(() => _padField = null),
+                onCalculator: () => _openCalculator(_padField!),
                 allowNegative: _canBeNegative,
               ),
             ),
@@ -383,36 +382,20 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
 }
 
 class _PadValue extends StatelessWidget {
-  const _PadValue({
-    required this.label,
-    required this.text,
-    required this.active,
-    required this.onTap,
-    required this.onCalculator,
-    this.helper,
-  });
+  const _PadValue({required this.label, required this.text, required this.active, required this.onTap, this.helper});
 
   final String label;
   final String text;
   final String? helper;
   final bool active;
   final VoidCallback onTap;
-  final VoidCallback onCalculator;
 
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     child: InputDecorator(
       isFocused: active,
-      decoration: InputDecoration(
-        labelText: label,
-        helperText: helper,
-        suffixIcon: IconButton(
-          tooltip: 'Calculator',
-          icon: const Icon(Icons.calculate_outlined),
-          onPressed: onCalculator,
-        ),
-      ),
+      decoration: InputDecoration(labelText: label, helperText: helper),
       child: Text(text, style: Theme.of(context).textTheme.titleLarge),
     ),
   );

@@ -22,76 +22,81 @@ String _addDigit(String text, String digit, int decimals) {
 }
 
 const signKey = '±';
+const calculatorKey = 'calc';
+const doneKey = 'done';
 
 class NumberPad extends StatelessWidget {
-  const NumberPad({super.key, required this.onKey, required this.onDone, this.allowNegative = false});
+  const NumberPad({
+    super.key,
+    required this.onKey,
+    required this.onDone,
+    required this.onCalculator,
+    this.allowNegative = false,
+  });
 
   final ValueChanged<String> onKey;
   final VoidCallback onDone;
+  final VoidCallback onCalculator;
+
+  /// Without it +/- stays in place but greyed out, so no key ever moves.
   final bool allowNegative;
 
   static const _rows = [
-    ['1', '2', '3'],
-    ['4', '5', '6'],
-    ['7', '8', '9'],
-    ['00', '0', '.'],
+    ['1', '2', '3', signKey],
+    ['4', '5', '6', calculatorKey],
+    ['7', '8', '9', backspaceKey],
+    ['00', '0', '.', doneKey],
   ];
 
   @override
-  Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.titleLarge;
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainer,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final row in _rows)
-                Row(
-                  children: [
-                    for (final key in row)
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => onKey(key),
-                          child: Text(key, style: style),
-                        ),
-                      ),
-                  ],
-                ),
-              Row(
-                // Same three columns as the digits, so each key stays put
-                // whether or not +/- is shown.
-                children: [
-                  Expanded(
-                    child: allowNegative
-                        ? TextButton(
-                            onPressed: () => onKey(signKey),
-                            child: Text('+/-', style: style),
-                          )
-                        : const SizedBox(),
-                  ),
-                  Expanded(
-                    child: IconButton(
-                      tooltip: 'Backspace',
-                      icon: const Icon(Icons.backspace_outlined),
-                      onPressed: () => onKey(backspaceKey),
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: FilledButton(onPressed: onDone, child: const Text('Done')),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) => Material(
+    color: Theme.of(context).colorScheme.surfaceContainer,
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 8,
+          children: [
+            for (final row in _rows)
+              Row(spacing: 8, children: [for (final key in row) Expanded(child: _key(context, key))]),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _key(BuildContext context, String key) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final action = !RegExp(r'^[\d.]+$').hasMatch(key);
+    final enabled = key != signKey || allowNegative;
+    final foreground = !enabled
+        ? colors.onSurface.withValues(alpha: 0.38)
+        : (action ? colors.onSecondaryContainer : colors.onSurface);
+    Text text(String label) => Text(label, style: theme.textTheme.titleLarge?.copyWith(color: foreground));
+    final (VoidCallback onTap, Widget label, String? tooltip) = switch (key) {
+      signKey => (() => onKey(key), text('+/-'), null),
+      calculatorKey => (onCalculator, Icon(Icons.calculate_outlined, color: foreground), 'Calculator'),
+      backspaceKey => (() => onKey(key), Icon(Icons.backspace_outlined, color: foreground), 'Backspace'),
+      doneKey => (onDone, Icon(Icons.check, color: foreground), 'Done'),
+      _ => (() => onKey(key), text(key), null),
+    };
+    final button = SizedBox(
+      height: 48,
+      child: Material(
+        shape: const StadiumBorder(),
+        clipBehavior: Clip.antiAlias,
+        color: !enabled
+            ? colors.onSurface.withValues(alpha: 0.08)
+            : (action ? colors.secondaryContainer : colors.surfaceContainerHighest),
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          child: Center(child: label),
         ),
       ),
     );
+    return tooltip == null ? button : Tooltip(message: tooltip, child: button);
   }
 }

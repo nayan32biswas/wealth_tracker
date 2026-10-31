@@ -113,10 +113,10 @@ void main() {
         }
       }
 
-      Future<void> openFor(WidgetTester tester, String field) => tapAndSettle(
-        tester,
-        find.descendant(of: find.widgetWithText(InputDecorator, field), matching: find.byTooltip('Calculator')),
-      );
+      Future<void> openFor(WidgetTester tester, String field) async {
+        await tapAndSettle(tester, find.widgetWithText(InputDecorator, field));
+        await tapAndSettle(tester, find.descendant(of: find.byType(NumberPad), matching: find.byTooltip('Calculator')));
+      }
 
       testWidgets('starts with the amount and Done puts the result back', (tester) async {
         final app = await pumpApp(tester);
@@ -218,6 +218,72 @@ void main() {
         for (final key in operatorKeys) {
           expect(find.descendant(of: find.byType(NumberPad), matching: find.text(key)), findsNothing);
         }
+      });
+    });
+
+    group('number pad', () {
+      Finder padKey(String key) => find.descendant(
+        of: find.byType(NumberPad),
+        matching: ['Calculator', 'Backspace', 'Done'].contains(key) ? find.byTooltip(key) : find.text(key),
+      );
+
+      bool enabled(WidgetTester tester, String key) =>
+          tester.widget<InkWell>(find.ancestor(of: padKey(key), matching: find.byType(InkWell)).first).onTap != null;
+
+      testWidgets('has four rows of four keys, the actions on the right', (tester) async {
+        await pumpApp(tester);
+        await openNewTransaction(tester);
+        await tapAndSettle(tester, find.widgetWithText(InputDecorator, 'Amount'));
+
+        const rows = [
+          ['1', '2', '3', '+/-'],
+          ['4', '5', '6', 'Calculator'],
+          ['7', '8', '9', 'Backspace'],
+          ['00', '0', '.', 'Done'],
+        ];
+        for (final row in rows) {
+          final centers = [for (final key in row) tester.getCenter(padKey(key))];
+          for (var i = 1; i < centers.length; i++) {
+            expect(centers[i].dy, centers[0].dy);
+            expect(centers[i].dx, greaterThan(centers[i - 1].dx));
+          }
+        }
+        for (var r = 1; r < rows.length; r++) {
+          expect(tester.getCenter(padKey(rows[r][0])).dy, greaterThan(tester.getCenter(padKey(rows[r - 1][0])).dy));
+        }
+      });
+
+      testWidgets('the boxes have no calculator button of their own', (tester) async {
+        await pumpApp(tester);
+        await openNewTransaction(tester);
+        await showMoreOptions(tester);
+
+        expect(find.byTooltip('Calculator'), findsNothing);
+      });
+
+      testWidgets('+/- flips the sign of an expense amount', (tester) async {
+        await pumpApp(tester);
+        await openNewTransaction(tester);
+        await tapAndSettle(tester, find.widgetWithText(InputDecorator, 'Amount'));
+        await tester.tap(padKey('5'));
+        await tester.pump();
+
+        expect(enabled(tester, '+/-'), isTrue);
+        await tester.tap(padKey('+/-'));
+        await tester.pump();
+        expect(find.text('-5'), findsOneWidget);
+      });
+
+      testWidgets('+/- is greyed out for a fee and for a transfer', (tester) async {
+        await pumpApp(tester);
+        await openNewTransaction(tester);
+        await showMoreOptions(tester);
+        await tapAndSettle(tester, find.widgetWithText(InputDecorator, 'Fee'));
+        expect(enabled(tester, '+/-'), isFalse);
+
+        await tapAndSettle(tester, find.text('Transfer'));
+        await tapAndSettle(tester, find.widgetWithText(InputDecorator, 'Amount'));
+        expect(enabled(tester, '+/-'), isFalse);
       });
     });
 

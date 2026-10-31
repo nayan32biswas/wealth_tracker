@@ -305,7 +305,7 @@ Future<void> typeOnPad(WidgetTester tester, String field, List<String> keys) asy
     await tester.tap(finder);
     await tester.pump();
   }
-  await tapAndSettle(tester, find.text('Done'));
+  await tapAndSettle(tester, find.byTooltip('Done'));
 }
 
 Future<void> typePin(WidgetTester tester, String pin, {String submit = 'OK'}) async {

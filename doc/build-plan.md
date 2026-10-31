@@ -86,7 +86,7 @@ Bottom navigation: **Activity · Stats · Accounts · Settings**. The app opens 
 
 - **Activity:** period bar with a view menu: Daily (month grouped by day), Calendar (month grid), Monthly (year, one row per month). Income, expense and net sit above the list. Each entry shows account, category with its note in small grey text underneath, and amount. Search by note; a collapsed Filters panel adds a date range, several categories, several accounts, and sort by newest or by amount (largest or smallest money moved).
 - **Add / Edit:** full screen. Type, date and time, account (+ to-account for transfers), category, amount, note. Fee and "Repeat" sit behind "More options"; a non-zero fee and the total show under the amount. Save at the bottom, Delete in the top bar.
-- **Number pad:** opens for Amount and Fee (0–9, `00`, `.`, backspace, Done). Blocks extra decimals and a second `.`. A reusable widget with its own tested input logic.
+- **Number pad:** opens for Amount and Fee. Four rows of pill keys: `1 2 3 +/-`, `4 5 6 calculator`, `7 8 9 backspace`, `00 0 . Done`. `+/-` is greyed out where a value can't be negative (the fee, a transfer); the calculator key opens the calculator for the field being typed. Blocks extra decimals and a second `.`. A reusable widget with its own tested input logic.
 - **Period bar** (Activity, Stats): previous / period / next, plus a menu. Tap the period to jump. No week periods. Long text cut with "…", large amounts shrink to fit.
 - **Stats:** collapsible sections in one list. One section open at a time. A section loads data only while open.
   - Categories: Income / Expense toggle, ranked list with bar, % and amount. Tap a row for its transactions.
