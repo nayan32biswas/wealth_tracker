@@ -92,6 +92,16 @@ void main() {
     expect(tester.getSize(toggle).height, lessThanOrEqualTo(32));
   });
 
+  testWidgets('the total is one line: label left, amount right in line with the category amounts', (tester) async {
+    await pumpApp(tester, arrange: spending);
+    await openTab(tester, 'Stats');
+
+    final label = tester.getCenter(find.text('Total spent'));
+    final total = find.text('৳500.00');
+    expect((tester.getCenter(total).dy - label.dy).abs(), lessThan(2));
+    expect(tester.getTopRight(total).dx, tester.getTopRight(find.text('৳400.00')).dx);
+  });
+
   testWidgets('income tab shows income categories', (tester) async {
     await pumpApp(tester, arrange: spending);
     await openTab(tester, 'Stats');

@@ -118,8 +118,21 @@ class _CategoriesViewState extends ConsumerState<_CategoriesView> {
             onSelectionChanged: (s) => setState(() => _type = s.single),
           ),
           const SizedBox(height: 8),
-          Text(_type == TransactionType.expense ? 'Total spent' : 'Total received', style: text.labelLarge),
-          MoneyText(total, style: text.headlineSmall),
+          Row(
+            spacing: 16,
+            children: [
+              Text(_type == TransactionType.expense ? 'Total spent' : 'Total received', style: text.labelLarge),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: MoneyText(total, style: text.titleLarge),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 8),
           if (shares.isEmpty)
             Padding(
