@@ -151,7 +151,7 @@ class DayList extends StatelessWidget {
     final rows = <Widget Function(BuildContext)>[
       for (final (i, day) in groupByDay(txns).indexed) ...[
         // Shaded so where one day ends and the next starts is easy to see.
-        if (i > 0) (_) => const SizedBox(height: 16, child: ColoredBox(color: Colors.black)),
+        if (i > 0) (_) => const SizedBox(height: 10, child: ColoredBox(color: Colors.black)),
         (context) => _dayHeader(context, day),
         for (final t in day.transactions) (_) => TransactionTile(t),
       ],

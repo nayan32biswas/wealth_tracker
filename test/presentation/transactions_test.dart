@@ -584,13 +584,13 @@ void main() {
       expect(find.text('Dinner out'), findsOneWidget);
     });
 
-    testWidgets('a black band separates one day from the next', (tester) async {
+    testWidgets('a thin black band separates one day from the next', (tester) async {
       await pumpApp(tester, arrange: twoDays);
       await openTab(tester, 'Activity');
 
       final band = find.byWidgetPredicate((w) => w is ColoredBox && w.color == Colors.black);
       expect(band, findsOneWidget);
-      expect(tester.getSize(band).height, 16);
+      expect(tester.getSize(band).height, 10);
       expect(tester.getTopLeft(band).dy, lessThan(tester.getTopLeft(find.text('Tue, 1 Sep')).dy));
       expect(tester.getTopLeft(band).dy, greaterThan(tester.getTopLeft(find.text('Thu, 10 Sep')).dy));
     });
