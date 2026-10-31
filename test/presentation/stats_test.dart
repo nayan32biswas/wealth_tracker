@@ -230,6 +230,16 @@ void main() {
     expect(find.byType(LineChart), findsNothing);
   });
 
+  testWidgets('section titles are shaded apart from their reports', (tester) async {
+    await pumpApp(tester);
+    await openTab(tester, 'Stats');
+
+    final shade = Theme.of(tester.element(find.byType(StatsScreen))).colorScheme.surfaceContainerHigh;
+    for (final title in ['Categories', 'Spending pace', 'Trends']) {
+      expect(tester.widget<ListTile>(find.widgetWithText(ListTile, title)).tileColor, shade, reason: title);
+    }
+  });
+
   testWidgets('opening a section closes the one that was open', (tester) async {
     await pumpApp(tester, arrange: spending);
     await openTab(tester, 'Stats');

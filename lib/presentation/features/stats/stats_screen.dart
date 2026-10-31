@@ -63,8 +63,10 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           children: [
             for (final (i, section) in _sections.indexed) ...[
               if (i > 0) const Divider(height: 1),
+              // Shaded so each section's title stands apart from its report.
               ListTile(
                 dense: true,
+                tileColor: Theme.of(context).colorScheme.surfaceContainerHigh,
                 title: Text(section.title, style: Theme.of(context).textTheme.titleMedium),
                 trailing: Icon(_open == i ? Icons.expand_less : Icons.expand_more),
                 onTap: () => setState(() => _open = _open == i ? null : i),
