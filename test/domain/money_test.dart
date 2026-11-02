@@ -1,0 +1,88 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:wealthtracker/domain/services/money.dart';
+
+void main() {
+  group('MoneyFormat', () {
+    const taka = MoneyFormat(symbol: '৳', decimals: 2);
+
+    test('formats minor units with grouping and symbol', () {
+      expect(taka.format(65000), '৳650.00');
+      expect(taka.format(123456789), '৳1,234,567.89');
+      expect(taka.format(5), '৳0.05');
+      expect(taka.format(-203000), '-৳2,030.00');
+    });
+
+    test('compact labels shorten big amounts and keep neighbours apart', () {
+      expect(taka.compact(0, step: 2000000), '৳0');
+      expect(taka.compact(95000, step: 5000), '৳950');
+      expect(taka.compact(1200000, step: 200000), '৳12K');
+      expect(taka.compact(100000, step: 50000), '৳1K');
+      expect(taka.compact(150000, step: 50000), '৳1.5K');
+      expect(taka.compact(225000000, step: 5000000), '৳2.25M');
+      expect(taka.compact(102000, step: 2000), '৳1.02K');
+      expect(taka.compact(104000, step: 2000), '৳1.04K');
+      expect(taka.compact(-5000000, step: 2500000), '-৳50K');
+      expect(const MoneyFormat(symbol: '¥', decimals: 0).compact(1500, step: 500), '¥1.5K');
+    });
+
+    test('can leave out the symbol', () {
+      expect(taka.format(150050, withSymbol: false), '1,500.50');
+      expect(taka.plain(150050), '1500.50');
+    });
+
+    test('supports currencies without decimals', () {
+      const yen = MoneyFormat(symbol: '¥', decimals: 0);
+      expect(yen.format(1500), '¥1,500');
+      expect(yen.parse('1500'), 1500);
+    });
+
+    test('supports currencies with three decimals', () {
+      const dinar = MoneyFormat(symbol: 'KD', decimals: 3);
+      expect(dinar.format(1234567), 'KD1,234.567');
+      expect(dinar.format(5), 'KD0.005');
+      expect(dinar.parse('1,234.567'), 1234567);
+      expect(dinar.parse('0.5'), 500);
+      expect(dinar.parse('1.2345'), isNull);
+      expect(dinar.plain(1234500), '1234.500');
+      expect(dinar.editText(1234500), '1234.5');
+      expect(dinar.compact(1234567, step: 500000), 'KD1.2K');
+    });
+
+    test('parses typed amounts into minor units', () {
+      expect(taka.parse('650'), 65000);
+      expect(taka.parse('650.5'), 65050);
+      expect(taka.parse('0.05'), 5);
+      expect(taka.parse('1,234.56'), 123456);
+      expect(taka.parse('.5'), 50);
+    });
+
+    test('a comma is only accepted as a thousands separator', () {
+      expect(taka.parse('1,234,567.89'), 123456789);
+      expect(taka.parse('1,00,000'), 10000000);
+      expect(taka.parse('12,50'), isNull);
+      expect(taka.parse('1,5'), isNull);
+      expect(taka.parse('1,2345'), isNull);
+    });
+
+    test('amounts longer than 12 whole digits are rejected, not crashed on', () {
+      expect(taka.parse('9' * 12), 99999999999900);
+      expect(taka.parse('9' * 13), isNull);
+      expect(taka.parse('9' * 25), isNull);
+    });
+
+    test('rejects text that is not an amount', () {
+      expect(taka.parse(''), isNull);
+      expect(taka.parse('abc'), isNull);
+      expect(taka.parse('1.234'), isNull);
+      expect(taka.parse('1.2.3'), isNull);
+      expect(taka.parse('-5'), isNull);
+    });
+
+    test('edit text drops trailing zeros for the number pad', () {
+      expect(taka.editText(65000), '650');
+      expect(taka.editText(65050), '650.5');
+      expect(taka.editText(5), '0.05');
+      expect(taka.editText(0), '');
+    });
+  });
+}

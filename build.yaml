@@ -1,0 +1,15 @@
+targets:
+  $default:
+    builders:
+      # Keep generated code at the same line width as the formatter
+      # (page_width in analysis_options.yaml), so regenerating never
+      # produces a formatting-only diff.
+      source_gen:combining_builder:
+        options:
+          preamble: "// dart format width=120"
+      drift_dev:
+        options:
+          databases:
+            app: lib/data/db/app_database.dart
+          test_dir: test/data/
+          schema_dir: drift_schemas/

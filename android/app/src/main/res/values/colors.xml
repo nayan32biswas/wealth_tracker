@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the app's dark surface so there is no flash on start. -->
+    <color name="background">#0E1416</color>
+	<color name="ic_launcher_background">#EEF4F3</color>
+</resources>
