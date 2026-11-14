@@ -112,6 +112,30 @@ class DriftTransactionRepository implements TransactionRepository {
   Future<void> delete(int id) => (_db.delete(_db.transactions)..where((t) => t.id.equals(id))).go();
 
   @override
+  Future<void> deleteAll(Set<int> ids) => _db.transaction(() async {
+    // Chunks keep each statement under SQLite's limit on bound values.
+    final list = ids.toList();
+    for (var i = 0; i < list.length; i += 500) {
+      await (_db.delete(_db.transactions)..where((t) => t.id.isIn(list.skip(i).take(500)))).go();
+    }
+  });
+
+  @override
+  Future<int> countWithFees(Set<int> ids) async {
+    final list = ids.toList();
+    var total = 0;
+    for (var i = 0; i < list.length; i += 500) {
+      final chunk = list.skip(i).take(500);
+      final count = _db.transactions.id.count();
+      final query = _db.selectOnly(_db.transactions)
+        ..addColumns([count])
+        ..where(_db.transactions.id.isIn(chunk) | _db.transactions.parentId.isIn(chunk));
+      total += (await query.getSingle()).read(count) ?? 0;
+    }
+    return total;
+  }
+
+  @override
   Future<Transaction?> byId(int id) =>
       (_db.select(_db.transactions)..where((t) => t.id.equals(id))).map(toModel).getSingleOrNull();
 
@@ -190,6 +214,9 @@ class DriftTransactionRepository implements TransactionRepository {
             MonthlyFlow(month: r.read<String>('month'), income: r.read<int>('income'), expense: r.read<int>('expense')),
         ],
       );
+
+  @override
+  Stream<void> watchChanges() => _db.tableUpdates(TableUpdateQuery.onTable(_db.transactions));
 
   // "Lunch" and "lunch " are one note. With a single max() in the query,
   // SQLite reads the bare `note` from the newest row, so the latest spelling

@@ -70,7 +70,6 @@ class TransactionDraft {
   bool get isTransfer => type == TransactionType.transfer;
 
   String? get problem {
-    if (isTransfer && amount < 0) return "A transfer can't be negative";
     if (assetId == null) return 'Choose an account';
     if (isTransfer) {
       if (toAssetId == null) return 'Choose where the money goes';
@@ -79,7 +78,7 @@ class TransactionDraft {
       return 'Choose a category';
     }
     if (hasFee) {
-      if (fee <= 0) return 'Enter the fee, or untick Add a fee or tax';
+      if (fee == 0) return 'Enter the fee, or untick Add a fee or tax';
       if (feeCategoryId == null) return 'Choose a category for the fee';
     }
     return null;

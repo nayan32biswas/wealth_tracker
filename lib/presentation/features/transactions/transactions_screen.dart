@@ -11,6 +11,7 @@ import '../../app/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/period_switcher.dart';
 import 'search_screen.dart';
+import 'selection.dart';
 import 'transaction_form.dart';
 
 /// How Activity shows its period, picked from the menu in the top bar.
@@ -46,42 +47,53 @@ class TransactionsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final txns = ref.watch(periodTransactionsProvider).value ?? const [];
     final view = ref.watch(activityViewProvider);
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 4,
-        title: PeriodBar(
-          transactionsPeriodProvider,
-          options: [for (final v in ActivityView.values) v.option],
-          selected: view.option,
-          onSelected: (o) =>
-              ref.read(activityViewProvider.notifier).set(ActivityView.values.firstWhere((v) => v.label == o.label)),
+    // Only the daily list picks rows: the calendar shows one day of the
+    // month, so Select all there would reach entries out of sight.
+    return SelectableTransactions(
+      shown: view == ActivityView.daily ? txns : const [],
+      builder: (context, selectionBar) => Scaffold(
+        appBar:
+            selectionBar ??
+            AppBar(
+              titleSpacing: 4,
+              title: PeriodBar(
+                transactionsPeriodProvider,
+                options: [for (final v in ActivityView.values) v.option],
+                selected: view.option,
+                onSelected: (o) => ref
+                    .read(activityViewProvider.notifier)
+                    .set(ActivityView.values.firstWhere((v) => v.label == o.label)),
+              ),
+              actions: [
+                IconButton(
+                  tooltip: 'Search',
+                  icon: const Icon(Icons.search),
+                  onPressed: () =>
+                      Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const SearchScreen())),
+                ),
+              ],
+            ),
+        body: Column(
+          children: [
+            TotalsBar(PeriodTotals.of(txns)),
+            const Divider(height: 1),
+            Expanded(
+              child: switch (view) {
+                ActivityView.daily => DayList(txns),
+                ActivityView.calendar => _CalendarView(txns),
+                ActivityView.monthly => const _MonthlyView(),
+              },
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Search',
-            icon: const Icon(Icons.search),
-            onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const SearchScreen())),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          TotalsBar(PeriodTotals.of(txns)),
-          const Divider(height: 1),
-          Expanded(
-            child: switch (view) {
-              ActivityView.daily => DayList(txns),
-              ActivityView.calendar => _CalendarView(txns),
-              ActivityView.monthly => const _MonthlyView(),
-            },
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: null,
-        tooltip: 'Add transaction',
-        onPressed: () => openTransactionForm(context),
-        child: const Icon(Icons.add),
+        floatingActionButton: selectionBar != null
+            ? null
+            : FloatingActionButton(
+                heroTag: null,
+                tooltip: 'Add transaction',
+                onPressed: () => openTransactionForm(context),
+                child: const Icon(Icons.add),
+              ),
       ),
     );
   }
@@ -386,10 +398,13 @@ class TransactionTile extends ConsumerWidget {
     final t = transaction;
     final accounts = ref.watch(assetNamesProvider).value ?? const {};
     final categories = ref.watch(categoryNamesProvider).value ?? const {};
-    final account = t.type == TransactionType.transfer
-        ? '${accounts[t.assetId] ?? '?'} → ${accounts[t.toAssetId] ?? '?'}'
-        : accounts[t.assetId] ?? '?';
-    final title = t.type == TransactionType.transfer ? 'Transfer' : categories[t.categoryId] ?? 'No category';
+    final account = accounts[t.assetId] ?? '?';
+    // A transfer has no category, so its target account takes that wider
+    // column instead of squeezing both names into the account column. The
+    // arrow keeps it from reading as a category name.
+    final title = t.type == TransactionType.transfer
+        ? '→ ${accounts[t.toAssetId] ?? '?'}'
+        : categories[t.categoryId] ?? 'No category';
 
     final text = Theme.of(context).textTheme;
     final grey = Theme.of(context).colorScheme.onSurfaceVariant;
@@ -398,52 +413,63 @@ class TransactionTile extends ConsumerWidget {
     Text line(String value, TextStyle? style) =>
         Text(value, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
 
+    final selection = TransactionSelection.maybeOf(context);
+    final selectable = selection != null && selection.canPick(t);
+    final picked = selectable && selection.isPicked(t);
+
     // Account, then category with the note under it, then amount. The row
     // hugs its text; the padding is the gap between rows and stays tappable.
-    return InkWell(
-      onTap: () => openTransactionForm(context, existing: t),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          spacing: 8,
-          children: [
-            Expanded(flex: 4, child: line(account, text.bodyMedium?.copyWith(color: grey))),
-            Expanded(
-              flex: 6,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [line(title, text.bodyMedium), if (note.isNotEmpty) line(note, small)],
+    return Material(
+      type: picked ? MaterialType.canvas : MaterialType.transparency,
+      color: picked ? Theme.of(context).colorScheme.secondaryContainer : null,
+      child: InkWell(
+        onTap: selectable && selection.active
+            ? () => selection.toggle(t)
+            : () => openTransactionForm(context, existing: t),
+        onLongPress: selectable ? () => selection.toggle(t) : null,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            spacing: 8,
+            children: [
+              Expanded(flex: 4, child: line(account, text.bodyMedium?.copyWith(color: grey))),
+              Expanded(
+                flex: 6,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [line(title, text.bodyMedium), if (note.isNotEmpty) line(note, small)],
+                ),
               ),
-            ),
-            // One fixed width so the category column lines up on every row,
-            // whatever the amount and date; a very large amount shrinks to fit.
-            SizedBox(
-              width: 88,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: MoneyText(
-                      t.amount,
-                      tone: switch (t.type) {
-                        TransactionType.income => MoneyTone.income,
-                        TransactionType.expense => MoneyTone.expense,
-                        TransactionType.transfer => MoneyTone.plain,
-                      },
-                    ),
-                  ),
-                  if (showDate)
+              // One fixed width so the category column lines up on every row,
+              // whatever the amount and date; a very large amount shrinks to fit.
+              SizedBox(
+                width: 88,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
                     FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: Text(DateFormat('d MMM yyyy').format(t.dateTime), style: small),
+                      child: MoneyText(
+                        t.amount,
+                        tone: switch (t.type) {
+                          TransactionType.income => MoneyTone.income,
+                          TransactionType.expense => MoneyTone.expense,
+                          TransactionType.transfer => MoneyTone.plain,
+                        },
+                      ),
                     ),
-                ],
+                    if (showDate)
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(DateFormat('d MMM yyyy').format(t.dateTime), style: small),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

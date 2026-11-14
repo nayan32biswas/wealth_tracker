@@ -38,10 +38,14 @@ class BalanceSheet {
   int? balanceOf(int assetId) =>
       groups.expand((g) => g.accounts).where((a) => a.asset.id == assetId).firstOrNull?.balance;
 
-  int get assets => groups.where((g) => !g.group.isLiability).fold(0, (sum, g) => sum + g.total);
+  // Each account counts by the sign of its balance, not its group: an
+  // overdrawn bank account is money owed, a card in credit is money held.
+  Iterable<int> get _balances => groups.expand((g) => g.accounts).map((a) => a.balance);
+
+  int get assets => _balances.where((b) => b > 0).fold(0, (sum, b) => sum + b);
 
   /// Shown as the amount owed, so a debt reads as a positive number.
-  int get liabilities => -groups.where((g) => g.group.isLiability).fold(0, (sum, g) => sum + g.total);
+  int get liabilities => -_balances.where((b) => b < 0).fold(0, (sum, b) => sum + b);
 
   int get netWorth => assets - liabilities;
 }

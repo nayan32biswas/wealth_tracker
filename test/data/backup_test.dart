@@ -86,7 +86,11 @@ void main() {
         'no version': 'PRAGMA user_version = 0',
         'missing required column': 'ALTER TABLE "transaction" RENAME COLUMN asset_id TO wallet',
         'missing table': 'DROP TABLE recurring_rule',
-        'unknown type': "PRAGMA ignore_check_constraints = ON; UPDATE \"transaction\" SET type = 'gift'",
+        // The tables have no CHECK on these columns; the reader's enums
+        // are what keep an unknown value out.
+        'unknown entry type': "UPDATE \"transaction\" SET type = 'gift'",
+        'unknown category type': "UPDATE category SET type = 'gift'",
+        'unknown group type': "UPDATE asset_group SET type = 'gift'",
       };
       await loadDemoData(repos, today, months: 1);
 
@@ -293,6 +297,16 @@ void main() {
 
       await backup.importCsv(await backup.previewCsv(text.split('\r\n').take(2).join('\r\n')));
       expect((await repos.transactions.find(const TransactionQuery())).single.amount, -2550);
+    });
+
+    test('a negative transfer imports, keeping its sign', () async {
+      const text =
+          'date,time,type,amount,account,to_account,category,note\r\n'
+          '2026-09-01,09:00,transfer,-10,Bank Account,Cash,,Back to the bank\r\n';
+
+      expect((await backup.previewCsv(text)).errors, isEmpty);
+      await backup.importCsv(await backup.previewCsv(text));
+      expect((await repos.transactions.find(const TransactionQuery())).single.amount, -1000);
     });
 
     test('a 0 amount imports as 0', () async {

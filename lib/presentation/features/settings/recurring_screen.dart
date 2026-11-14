@@ -92,8 +92,8 @@ class _RuleDialogState extends State<_RuleDialog> {
   }
 
   RecurringRule? _value() {
-    final amount = widget.money.parse(_amount.text);
-    if (amount == null || amount <= 0) return null;
+    final amount = widget.money.parseSigned(_amount.text);
+    if (amount == null || amount == 0) return null;
     return widget.rule.copyWith(amount: amount, frequency: _frequency, isActive: _active);
   }
 
@@ -105,7 +105,7 @@ class _RuleDialogState extends State<_RuleDialog> {
     children: [
       TextField(
         controller: _amount,
-        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
         decoration: const InputDecoration(labelText: 'Amount'),
         onChanged: (_) => setState(() {}),
       ),

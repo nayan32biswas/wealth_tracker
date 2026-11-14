@@ -8,6 +8,7 @@ import '../../../domain/services/reports.dart';
 import '../../app/providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/period_switcher.dart';
+import '../transactions/selection.dart';
 import '../transactions/transactions_screen.dart';
 
 class AccountsScreen extends ConsumerWidget {
@@ -149,59 +150,65 @@ class AccountDetailScreen extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     // One scroll: the balance and totals scroll away with the entries so the
     // list gets the screen, while the period bar stays pinned to change it.
-    return Scaffold(
-      // The pinned period bar sits right under the app bar: keep both the
-      // same colour when scrolled so they read as one header.
-      appBar: AppBar(
-        toolbarHeight: 48,
-        scrolledUnderElevation: 0,
-        titleTextStyle: text.titleMedium,
-        title: Text(account.asset.name),
-      ),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Row(
-                spacing: 16,
-                children: [
-                  Text(group.isLiability ? 'Owed' : 'Balance', style: text.labelLarge),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: MoneyText(owedOrHeld(group, balance), tone: MoneyTone.signed, style: text.titleLarge),
+    return SelectableTransactions(
+      shown: monthly ? const [] : txns,
+      toolbarHeight: 48,
+      builder: (context, selectionBar) => Scaffold(
+        // The pinned period bar sits right under the app bar: keep both the
+        // same colour when scrolled so they read as one header.
+        appBar:
+            selectionBar ??
+            AppBar(
+              toolbarHeight: 48,
+              scrolledUnderElevation: 0,
+              titleTextStyle: text.titleMedium,
+              title: Text(account.asset.name),
+            ),
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(
+                  spacing: 16,
+                  children: [
+                    Text(group.isLiability ? 'Owed' : 'Balance', style: text.labelLarge),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: MoneyText(owedOrHeld(group, balance), tone: MoneyTone.signed, style: text.titleLarge),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: Divider(height: 1)),
-          PinnedHeaderSliver(
-            child: ColoredBox(
-              color: Theme.of(context).colorScheme.surface,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: PeriodBar(
-                  _accountPeriodProvider,
-                  options: [for (final v in _views) v.option],
-                  selected: (monthly ? ActivityView.monthly : ActivityView.daily).option,
+                  ],
                 ),
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Column(children: [TotalsBar.account(AccountTotals.of(txns, id)), const Divider(height: 1)]),
-          ),
-          if (monthly)
-            MonthList(period.start.year, _byMonth(txns, id), sliver: true)
-          else
-            DayList(txns, accountId: id, sliver: true),
-        ],
+            const SliverToBoxAdapter(child: Divider(height: 1)),
+            PinnedHeaderSliver(
+              child: ColoredBox(
+                color: Theme.of(context).colorScheme.surface,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: PeriodBar(
+                    _accountPeriodProvider,
+                    options: [for (final v in _views) v.option],
+                    selected: (monthly ? ActivityView.monthly : ActivityView.daily).option,
+                  ),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Column(children: [TotalsBar.account(AccountTotals.of(txns, id)), const Divider(height: 1)]),
+            ),
+            if (monthly)
+              MonthList(period.start.year, _byMonth(txns, id), sliver: true)
+            else
+              DayList(txns, accountId: id, sliver: true),
+          ],
+        ),
       ),
     );
   }

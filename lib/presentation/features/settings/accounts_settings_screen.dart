@@ -165,6 +165,21 @@ class GroupAccountsScreen extends ConsumerWidget {
       ),
     );
     if (result == null || !context.mounted) return;
+    // An archive can be undone; a delete cannot, and takes the opening
+    // amount with it.
+    if (result.$1 == DialogAction.remove && removeLabel == 'Delete') {
+      final opening = asset.initialBalance * (group.isLiability ? -1 : 1);
+      final ok = await confirm(
+        context,
+        title: 'Delete ${asset.name}?',
+        message: opening == 0
+            ? 'This cannot be undone.'
+            : 'Its ${group.isLiability ? 'amount owed' : 'opening balance'} of '
+                  '${ref.read(moneyFormatProvider).format(opening)} goes with it. This cannot be undone.',
+        action: 'Delete',
+      );
+      if (!ok || !context.mounted) return;
+    }
     await guarded(context, () async {
       switch (result) {
         case (DialogAction.remove, _):

@@ -64,7 +64,6 @@ class $AssetGroupsTable extends AssetGroups with TableInfo<$AssetGroupsTable, As
     'type',
     aliasedName,
     false,
-    check: () => type.isIn(groupTypes),
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant('asset'),
@@ -823,7 +822,6 @@ class $CategoriesTable extends Categories with TableInfo<$CategoriesTable, Categ
     'type',
     aliasedName,
     false,
-    check: () => type.isIn(categoryTypes),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
@@ -1189,7 +1187,6 @@ class $RecurringRulesTable extends RecurringRules with TableInfo<$RecurringRules
     'type',
     aliasedName,
     false,
-    check: () => type.isIn(transactionTypes),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
@@ -1238,7 +1235,6 @@ class $RecurringRulesTable extends RecurringRules with TableInfo<$RecurringRules
     'frequency',
     aliasedName,
     false,
-    check: () => frequency.isIn(frequencies),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
@@ -1958,7 +1954,6 @@ class $TransactionsTable extends Transactions with TableInfo<$TransactionsTable,
     'type',
     aliasedName,
     false,
-    check: () => type.isIn(transactionTypes),
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
@@ -1968,8 +1963,6 @@ class $TransactionsTable extends Transactions with TableInfo<$TransactionsTable,
     'amount',
     aliasedName,
     false,
-    check: () =>
-        BooleanExpressionOperators(type.equals('transfer')).not() | ComparableExpr(amount).isBiggerOrEqualValue(0),
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
@@ -2153,8 +2146,9 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String date;
   final String type;
 
-  /// Income and expense may be negative (a refund, a reversal); a transfer may not.
-  /// Zero is allowed, e.g. a free item kept for the record.
+  /// Any sign. A negative amount works against its total: a refund lowers
+  /// expense, a negative transfer moves money from the target back to the
+  /// source. Zero is allowed, e.g. a free item kept for the record.
   final int amount;
   final int assetId;
   final int? toAssetId;

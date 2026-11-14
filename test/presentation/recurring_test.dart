@@ -54,6 +54,21 @@ void main() {
     expect(txn.dateTime, testToday);
   });
 
+  testWidgets('a negative entry can repeat', (tester) async {
+    final app = await pumpApp(tester);
+    await openNewTransaction(tester);
+    await pickAccount(tester, 'Cash');
+
+    await typeOnPad(tester, 'Amount', ['9', '9', '+/-']);
+    await pickCategory(tester, 'Mobile & Internet');
+    await showMoreOptions(tester);
+    await tapAndSettle(tester, find.widgetWithText(DropdownButtonFormField<Frequency?>, 'Repeat'));
+    await tapAndSettle(tester, find.text('Every month').last);
+    await tapAndSettle(tester, find.text('Save'));
+
+    expect((await tester.runAsync(app.repos.recurring.active))!.single.amount, -9900);
+  });
+
   testWidgets('recurring screen lists rules with their schedule', (tester) async {
     await pumpApp(tester, arrange: rentRule);
     await openRecurring(tester);
@@ -73,6 +88,13 @@ void main() {
     await tapAndSettle(tester, find.text('Save'));
 
     expect((await tester.runAsync(app.repos.recurring.active))!.single.amount, 2600000);
+
+    await tapAndSettle(tester, find.text('House rent'));
+    await tester.enterText(find.widgetWithText(TextField, 'Amount'), '-500');
+    await tester.pump();
+    await tapAndSettle(tester, find.text('Save'));
+
+    expect((await tester.runAsync(app.repos.recurring.active))!.single.amount, -50000);
   });
 
   testWidgets('a rule can be paused and removed', (tester) async {

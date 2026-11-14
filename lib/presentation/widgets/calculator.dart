@@ -10,8 +10,10 @@ const operatorKeys = ['÷', '×', '−', '+'];
 final _operator = RegExp('[${operatorKeys.join()}]');
 
 /// Applies one calculator key to the typed sum, such as "750×3+10%".
-/// Digits and the point go to the last number through [padInput].
-String calcInput(String text, String key, {required int decimals}) {
+/// Digits and the point go to the last number through [padInput]. A number
+/// may have any decimals, even for a currency without them: only the result
+/// is money.
+String calcInput(String text, String key) {
   if (key == clearKey) return '';
   if (key == backspaceKey) return text.isEmpty ? text : text.substring(0, text.length - 1);
   final last = text.isEmpty ? '' : text[text.length - 1];
@@ -26,7 +28,7 @@ String calcInput(String text, String key, {required int decimals}) {
   // The amount pad drops a leading 0, but after an operator it is a real
   // number: 5×0 is 0.
   if (start > 0 && start == text.length && (key == '0' || key == '00')) return '${text}0';
-  return text.substring(0, start) + padInput(text.substring(start), key, decimals: decimals);
+  return text.substring(0, start) + padInput(text.substring(start), key, decimals: null);
 }
 
 /// Works out a typed sum in the smallest unit, × and ÷ before + and −, so
@@ -38,7 +40,7 @@ String calcInput(String text, String key, {required int decimals}) {
   final tokens = [for (final m in _token.allMatches(text)) m[0]!];
   if (tokens.isNotEmpty && operatorKeys.contains(tokens.last)) tokens.removeLast();
   final first = tokens.isNotEmpty && tokens.first == '−' ? 1 : 0;
-  final scale = BigInt.from(money.parse('1')!);
+  final scale = BigInt.from(10).pow(money.decimals);
   final hundred = BigInt.from(100);
   var total = _Fraction.zero;
   var term = _Fraction.zero;
@@ -46,25 +48,25 @@ String calcInput(String text, String key, {required int decimals}) {
   var negative = first == 1;
   for (var i = first; i < tokens.length; i += 2) {
     final percent = tokens[i].endsWith(percentKey);
-    final n = BigInt.from(money.parse(tokens[i].replaceAll(percentKey, '')) ?? 0);
-    final unit = percent ? scale * hundred : scale;
+    var n = _Fraction.parse(tokens[i].replaceAll(percentKey, ''));
+    if (percent) n = n.times(BigInt.one, hundred);
     switch (i == first ? null : tokens[i - 1]) {
       case '×':
-        term = term.times(n, unit);
+        term = term.times(n.top, n.bottom);
       case '÷':
-        if (n == BigInt.zero) return (value: 0, error: "Can't divide by 0");
-        term = term.times(unit, n);
+        if (n.top == BigInt.zero) return (value: 0, error: "Can't divide by 0");
+        term = term.times(n.bottom, n.top);
       case null:
-        term = _Fraction(n, percent ? hundred : BigInt.one);
+        term = n;
       case final op:
         total = total.plus(term, negative: negative);
         negative = op == '−';
         if (percent && total.top.isNegative) negative = !negative;
-        term = percent ? _Fraction(total.top.abs(), total.bottom).times(n, unit) : _Fraction(n, BigInt.one);
+        term = percent ? _Fraction(total.top.abs(), total.bottom).times(n.top, n.bottom) : n;
     }
   }
   total = total.plus(term, negative: negative);
-  final rounded = (total.top.abs() * BigInt.two + total.bottom) ~/ (total.bottom * BigInt.two);
+  final rounded = (total.top.abs() * scale * BigInt.two + total.bottom) ~/ (total.bottom * BigInt.two);
   if (rounded >= BigInt.from(10).pow(maxWholeDigits) * scale) return (value: 0, error: 'Too large');
   return (value: (total.top.isNegative ? -rounded : rounded).toInt(), error: null);
 }
@@ -79,6 +81,13 @@ class _Fraction {
 
   const _Fraction._(this.top, this.bottom);
 
+  /// Reads a typed number such as "12.505" or "3." exactly.
+  factory _Fraction.parse(String number) {
+    final [whole, ...rest] = number.split('.');
+    final fraction = rest.isEmpty ? '' : rest.first;
+    return _Fraction(BigInt.tryParse('$whole$fraction') ?? BigInt.zero, BigInt.from(10).pow(fraction.length));
+  }
+
   static final zero = _Fraction._(BigInt.zero, BigInt.one);
 
   final BigInt top;
@@ -92,25 +101,20 @@ class _Fraction {
 
 /// Opens the calculator on [start], in the smallest unit. Returns the result,
 /// or null when it is closed without Done.
-Future<int?> openCalculator(
-  BuildContext context, {
-  required int start,
-  required MoneyFormat money,
-  required bool allowNegative,
-}) => Navigator.push<int>(
-  context,
-  MaterialPageRoute(
-    fullscreenDialog: true,
-    builder: (_) => CalculatorScreen(start: start, money: money, allowNegative: allowNegative),
-  ),
-);
+Future<int?> openCalculator(BuildContext context, {required int start, required MoneyFormat money}) =>
+    Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => CalculatorScreen(start: start, money: money),
+      ),
+    );
 
 class CalculatorScreen extends StatefulWidget {
-  const CalculatorScreen({super.key, required this.start, required this.money, required this.allowNegative});
+  const CalculatorScreen({super.key, required this.start, required this.money});
 
   final int start;
   final MoneyFormat money;
-  final bool allowNegative;
 
   @override
   State<CalculatorScreen> createState() => _CalculatorScreenState();
@@ -127,11 +131,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     ['00', '0', '.', 'Done'],
   ];
 
-  ({int value, String? error}) get _result {
-    final r = evaluateSum(_text, widget.money);
-    if (r.error == null && r.value < 0 && !widget.allowNegative) return (value: 0, error: "Can't be negative");
-    return r;
-  }
+  ({int value, String? error}) get _result => evaluateSum(_text, widget.money);
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +224,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
     final foreground = done ? colors.onPrimary : (red ? colors.error : colors.onSurface);
     final onTap = done
         ? (canFinish ? () => Navigator.pop(context, _result.value) : null)
-        : () => setState(() => _text = calcInput(_text, key, decimals: widget.money.decimals));
+        : () => setState(() => _text = calcInput(_text, key));
     return SizedBox.square(
       dimension: size,
       child: Material(

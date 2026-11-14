@@ -9,6 +9,7 @@ import '../../../domain/services/reports.dart';
 import '../../app/providers.dart';
 import '../../widgets/common.dart';
 import '../../widgets/note_suggestions.dart';
+import 'selection.dart';
 import 'transactions_screen.dart';
 
 const _sortLabels = {
@@ -86,6 +87,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     return _results!;
   }
 
+  // Focused here rather than by autofocus, which would focus the field
+  // again each time a selection ends and the search bar comes back.
+  @override
+  void initState() {
+    super.initState();
+    _searchFocus.requestFocus();
+  }
+
   @override
   void dispose() {
     _search.dispose();
@@ -117,19 +126,41 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         if (c.type == type) (id: c.id, name: c.name),
     ];
     final categoryGroups = {'Expense': ofType(CategoryType.expense), 'Income': ofType(CategoryType.income)};
-    final dates = _dates;
-    final results = _searching ? _resultsFor(dates) : null;
+    final results = _searching ? _resultsFor(_dates) : null;
 
+    return StreamBuilder(
+      stream: results,
+      builder: (context, snapshot) {
+        final found = results == null ? null : snapshot.data;
+        return SelectableTransactions(
+          shown: found ?? const [],
+          builder: (context, selectionBar) =>
+              _page(context, selectionBar, found, results != null, accounts, categoryGroups),
+        );
+      },
+    );
+  }
+
+  Widget _page(
+    BuildContext context,
+    PreferredSizeWidget? selectionBar,
+    List<Transaction>? found,
+    bool searching,
+    List<_Choice> accounts,
+    Map<String, List<_Choice>> categoryGroups,
+  ) {
+    final dates = _dates;
     return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: _search,
-          focusNode: _searchFocus,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Search notes', border: InputBorder.none),
-          onChanged: (v) => setState(() => _text = v),
-        ),
-      ),
+      appBar:
+          selectionBar ??
+          AppBar(
+            title: TextField(
+              controller: _search,
+              focusNode: _searchFocus,
+              decoration: const InputDecoration(hintText: 'Search notes', border: InputBorder.none),
+              onChanged: (v) => setState(() => _text = v),
+            ),
+          ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -193,7 +224,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 ),
               ),
           ],
-          if (results != null)
+          if (searching)
             StreamBuilder(
               stream: _totals,
               builder: (context, snapshot) => switch (snapshot.data) {
@@ -203,28 +234,23 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           const Divider(height: 1),
           Expanded(
-            child: results == null
-                ? const SizedBox()
-                : StreamBuilder(
-                    stream: results,
-                    builder: (context, snapshot) => switch (snapshot.data) {
-                      null => const SizedBox(),
-                      [] => const Center(child: Text('No matches')),
-                      final found => ListView.builder(
-                        // A full page means there may be more to load.
-                        itemCount: found.length + (found.length >= _limit ? 1 : 0),
-                        itemBuilder: (context, i) => i < found.length
-                            ? TransactionTile(found[i], showDate: true)
-                            : Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: TextButton(
-                                  onPressed: () => setState(() => _limit += _pageSize),
-                                  child: const Text('Load more'),
-                                ),
-                              ),
+            child: switch (found) {
+              null => const SizedBox(),
+              [] => const Center(child: Text('No matches')),
+              final found => ListView.builder(
+                // A full page means there may be more to load.
+                itemCount: found.length + (found.length >= _limit ? 1 : 0),
+                itemBuilder: (context, i) => i < found.length
+                    ? TransactionTile(found[i], showDate: true)
+                    : Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: TextButton(
+                          onPressed: () => setState(() => _limit += _pageSize),
+                          child: const Text('Load more'),
+                        ),
                       ),
-                    },
-                  ),
+              ),
+            },
           ),
         ],
       ),
@@ -332,20 +358,23 @@ class _PickManyDialogState extends State<_PickManyDialog> {
       child: ListView(
         shrinkWrap: true,
         children: [
-          for (final MapEntry(key: heading, value: items) in widget.groups.entries)
-            if (items.isNotEmpty) ...[
-              if (heading.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
-                  child: Text(heading, style: Theme.of(context).textTheme.labelLarge),
-                ),
-              for (final c in items)
-                CheckboxListTile(
-                  title: Text(c.name),
-                  value: _ids.contains(c.id),
-                  onChanged: (on) => setState(() => on! ? _ids.add(c.id) : _ids.remove(c.id)),
-                ),
+          for (final (g, MapEntry(key: heading, value: items))
+              in widget.groups.entries.where((e) => e.value.isNotEmpty).indexed) ...[
+            if (g > 0) const BlockGap(),
+            if (heading.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
+                child: Text(heading, style: Theme.of(context).textTheme.labelLarge),
+              ),
+            for (final (i, c) in items.indexed) ...[
+              if (i > 0) const RowDivider(),
+              CheckboxListTile(
+                title: Text(c.name),
+                value: _ids.contains(c.id),
+                onChanged: (on) => setState(() => on! ? _ids.add(c.id) : _ids.remove(c.id)),
+              ),
             ],
+          ],
         ],
       ),
     ),

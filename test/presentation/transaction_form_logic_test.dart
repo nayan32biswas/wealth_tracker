@@ -52,7 +52,7 @@ void main() {
   });
 
   group('calculator', () {
-    String type(List<String> keys) => keys.fold('', (text, key) => calcInput(text, key, decimals: 2));
+    String type(List<String> keys) => keys.fold('', calcInput);
     const money = MoneyFormat(symbol: '', decimals: 2);
     int value(String text) => evaluateSum(text, money).value;
 
@@ -61,8 +61,8 @@ void main() {
       expect(type(['−', '+', '7', '5', '0']), '−750');
     });
 
-    test('each number keeps its own decimal limit and digit cap', () {
-      expect(type(['1', '.', '5', '+', '2', '.', '2', '5', '9', '.']), '1.5+2.25');
+    test('each number takes any decimals, one point and the whole-digit cap', () {
+      expect(type(['1', '.', '5', '+', '2', '.', '2', '5', '9', '.']), '1.5+2.259');
       expect(type(['5', '+', '.', '5']), '5+0.5');
       expect(type(['1', '+', ...List.filled(20, '9')]), '1+${'9' * maxWholeDigits}');
     });
@@ -113,6 +113,19 @@ void main() {
       expect(value('2÷3'), 67);
       expect(value('1.25×0.5'), 63);
       expect(value('10−3÷0.08'), -2750);
+    });
+
+    test('works with any decimals and rounds only the result to the currency', () {
+      expect(value('1.005×2'), 201);
+      expect(value('0.125×8'), 100);
+      expect(value('1.23456'), 123);
+      expect(value('0.333+0.333+0.334'), 100);
+      expect(value('100×12.5%'), 1250);
+      expect(value('3.'), 300);
+      const rupees = MoneyFormat(symbol: '', decimals: 0);
+      expect(calcInput('2', '.'), '2.');
+      expect(evaluateSum('2.5×4', rupees).value, 10);
+      expect(evaluateSum('0.5', rupees).value, 1);
     });
 
     test('a trailing operator is ignored', () {
@@ -189,12 +202,15 @@ void main() {
       expect(draft().withAmount(100).withCategory(food).withAccount(null).problem, 'Choose an account');
     });
 
-    test('income and expense can be negative, a transfer cannot', () {
+    test('any amount can be negative: income, expense, a transfer and a fee', () {
       expect(draft().withAmount(-100).withCategory(food).problem, isNull);
 
       final t = TransactionDraft.create(TransactionType.transfer, now, assetId: 10).withToAccount(11);
-      expect(t.withAmount(-100).problem, "A transfer can't be negative");
-      expect(t.problem, isNull);
+      expect(t.withAmount(-100).problem, isNull);
+
+      final withFee = draft().withAmount(100).withCategory(food).withHasFee(true).withFeeCategory(9);
+      expect(withFee.withFee(-5).problem, isNull);
+      expect(withFee.withFee(0).problem, 'Enter the fee, or untick Add a fee or tax');
     });
 
     test('a transfer needs two different accounts and no category', () {

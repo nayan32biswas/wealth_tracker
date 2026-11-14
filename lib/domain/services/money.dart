@@ -74,6 +74,14 @@ class MoneyFormat {
     return int.parse(whole.isEmpty ? '0' : whole) * unit + int.parse(fraction.padRight(decimals, '0').ifEmpty('0'));
   }
 
+  /// Like [parse], with an optional leading "-".
+  int? parseSigned(String input) {
+    final text = input.trim();
+    final negative = text.startsWith('-');
+    final value = parse(negative ? text.substring(1) : text);
+    return value == null || !negative ? value : -value;
+  }
+
   static String _group(String digits) {
     final out = StringBuffer();
     for (var i = 0; i < digits.length; i++) {

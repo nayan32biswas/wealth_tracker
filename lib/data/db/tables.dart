@@ -4,10 +4,9 @@
 
 import 'package:drift/drift.dart';
 
-const transactionTypes = ['income', 'expense', 'transfer'];
-const categoryTypes = ['income', 'expense'];
-const groupTypes = ['asset', 'liability'];
-const frequencies = ['daily', 'weekly', 'monthly', 'yearly'];
+// Enum columns (type, frequency) hold the Dart enum's name and have no CHECK:
+// adding a value to a CHECK means rebuilding the table, while the enums
+// already reject unknown values when a row is read or imported.
 
 mixin Timestamps on Table {
   IntColumn get createdAt => integer()();
@@ -22,7 +21,7 @@ class AssetGroups extends Table with Timestamps {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
-  TextColumn get type => text().check(type.isIn(groupTypes)).withDefault(const Constant('asset'))();
+  TextColumn get type => text().withDefault(const Constant('asset'))();
 }
 
 @DataClassName('AssetRow')
@@ -50,7 +49,7 @@ class Categories extends Table with Timestamps {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
-  TextColumn get type => text().check(type.isIn(categoryTypes))();
+  TextColumn get type => text()();
   BoolColumn get isDeleted => boolean().withDefault(const Constant(false))();
 }
 
@@ -61,12 +60,12 @@ class RecurringRules extends Table with Timestamps {
 
   IntColumn get id => integer().autoIncrement()();
   TextColumn get note => text().nullable()();
-  TextColumn get type => text().check(type.isIn(transactionTypes))();
+  TextColumn get type => text()();
   IntColumn get amount => integer()();
   IntColumn get assetId => integer().references(Assets, #id)();
   IntColumn get toAssetId => integer().nullable().references(Assets, #id)();
   IntColumn get categoryId => integer().nullable().references(Categories, #id)();
-  TextColumn get frequency => text().check(frequency.isIn(frequencies))();
+  TextColumn get frequency => text()();
   IntColumn get interval => integer().withDefault(const Constant(1))();
   TextColumn get startDate => text()();
   TextColumn get endDate => text().nullable()();
@@ -95,11 +94,12 @@ class Transactions extends Table with Timestamps {
 
   /// Local calendar date `YYYY-MM-DD`, used for grouping by day/month.
   TextColumn get date => text()();
-  TextColumn get type => text().check(type.isIn(transactionTypes))();
+  TextColumn get type => text()();
 
-  /// Income and expense may be negative (a refund, a reversal); a transfer may not.
-  /// Zero is allowed, e.g. a free item kept for the record.
-  IntColumn get amount => integer().check(type.equals('transfer').not() | amount.isBiggerOrEqualValue(0))();
+  /// Any sign. A negative amount works against its total: a refund lowers
+  /// expense, a negative transfer moves money from the target back to the
+  /// source. Zero is allowed, e.g. a free item kept for the record.
+  IntColumn get amount => integer()();
   IntColumn get assetId => integer().references(Assets, #id)();
   IntColumn get toAssetId => integer().nullable().references(Assets, #id)();
   IntColumn get categoryId => integer().nullable().references(Categories, #id)();

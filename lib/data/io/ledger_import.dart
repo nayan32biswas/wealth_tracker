@@ -181,7 +181,6 @@ String? ledgerProblem(LedgerImport data) {
     if (!accounts.contains(assetId)) return 'its account is missing';
     if (categoryId != null && !categories.contains(categoryId)) return 'its category is missing';
     if (type != TransactionType.transfer) return null;
-    if (amount < 0) return 'a transfer is negative';
     if (toAssetId == null || !accounts.contains(toAssetId)) return 'a transfer has no second account';
     if (toAssetId == assetId) return 'a transfer goes to the same account';
     return null;

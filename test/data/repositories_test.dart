@@ -502,17 +502,22 @@ void main() {
       expect(deltas[bank], -500);
     });
 
-    test('a zero amount is kept, a negative transfer is refused', () async {
+    test('a zero amount is kept', () async {
       final cash = await assetId('Cash');
       final bank = await assetId('Bank Account');
 
       await repos.transactions.save(txn(TransactionType.expense, 0, cash));
       await repos.transactions.save(txn(TransactionType.transfer, 0, bank, to: cash));
       expect((await repos.transactions.find(const TransactionQuery())).map((t) => t.amount), [0, 0]);
-      expect(
-        repos.transactions.save(txn(TransactionType.transfer, -100, bank, to: cash)),
-        throwsA(isA<SqliteException>()),
-      );
+    });
+
+    test('a negative transfer moves the money back, from the target to the source', () async {
+      final cash = await assetId('Cash');
+      final bank = await assetId('Bank Account');
+      await repos.transactions.save(txn(TransactionType.transfer, -100, bank, to: cash));
+
+      final deltas = await repos.transactions.watchBalanceDeltas().first;
+      expect((deltas[bank], deltas[cash]), (100, -100));
     });
 
     test('monthly flows sum income, expense and net-worth change', () async {
@@ -595,6 +600,16 @@ void main() {
       expect((deltas[bank], deltas[cash]), (-2002000, 2000000));
     });
 
+    test('a negative fee takes its amount off the expenses', () async {
+      await repos.transactions.save(
+        txn(TransactionType.expense, 1000, cash, category: bankFee),
+        fee: Fee(amount: -50, categoryId: bankFee),
+      );
+
+      expect((await repos.transactions.watchBalanceDeltas().first)[cash], -950);
+      expect((await repos.transactions.watchMonthlyFlows().first).single.expense, 950);
+    });
+
     test('editing the entry moves its fee along; leaving the fee out removes it', () async {
       final id = await repos.transactions.save(
         txn(TransactionType.income, 100, bank, category: salary, note: 'a'),
@@ -624,6 +639,29 @@ void main() {
       );
 
       await repos.transactions.delete(id);
+
+      expect(await all(), isEmpty);
+    });
+
+    test('deleting many entries at once takes their fees and leaves the rest', () async {
+      final withFee = await repos.transactions.save(
+        txn(TransactionType.income, 100, bank, category: salary),
+        fee: Fee(amount: 5, categoryId: tds),
+      );
+      final plain = await repos.transactions.save(txn(TransactionType.expense, 20, cash, category: bankFee));
+      final kept = await repos.transactions.save(txn(TransactionType.expense, 30, cash, category: bankFee));
+
+      expect(await repos.transactions.countWithFees({withFee, plain}), 3);
+      await repos.transactions.deleteAll({withFee, plain});
+
+      expect([for (final t in await all()) t.id], [kept]);
+    });
+
+    test('deleting more entries than one statement can bind deletes them all', () async {
+      final ids = {for (var i = 0; i < 1200; i++) await repos.transactions.save(txn(TransactionType.expense, 1, cash))};
+
+      expect(await repos.transactions.countWithFees(ids), 1200);
+      await repos.transactions.deleteAll(ids);
 
       expect(await all(), isEmpty);
     });

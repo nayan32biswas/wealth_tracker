@@ -48,11 +48,17 @@ void main() {
       expect(sheet.groups.last.total, -3000);
     });
 
-    test('a card paid off beyond its debt counts as an asset-side credit', () {
+    test('a card paid off beyond its debt counts as an asset', () {
       final sheet = BalanceSheet.from(groups, assets, {20: 400});
 
-      expect(sheet.liabilities, -400);
-      expect(sheet.netWorth, 1400);
+      expect((sheet.assets, sheet.liabilities, sheet.netWorth), (1400, 0, 1400));
+    });
+
+    test('an asset account below zero counts as a liability', () {
+      final sheet = BalanceSheet.from(groups, assets, {11: -700, 20: -3000});
+
+      expect((sheet.assets, sheet.liabilities, sheet.netWorth), (1000, 3700, -2700));
+      expect(sheet.groups.first.total, 300, reason: 'the group subtotal still nets its accounts');
     });
   });
 

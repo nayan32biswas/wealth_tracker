@@ -9,8 +9,8 @@ import '../app/providers.dart';
 const noteLookupDelay = Duration(milliseconds: 150);
 
 /// Notes used before, shown as a row of chips under a text field while it
-/// has focus. Looked up once per pause in typing, never watched, so a closed
-/// or idle field costs nothing.
+/// has focus. Looked up once per pause in typing and again when entries
+/// change, never watched as a query, so a closed or idle field costs nothing.
 class NoteSuggestions extends ConsumerStatefulWidget {
   const NoteSuggestions({
     super.key,
@@ -42,6 +42,7 @@ class _NoteSuggestionsState extends ConsumerState<NoteSuggestions> with WidgetsB
   String? _lookedUp;
   Timer? _wait;
   int _request = 0;
+  late final StreamSubscription<void> _entries;
 
   @override
   void initState() {
@@ -49,6 +50,14 @@ class _NoteSuggestionsState extends ConsumerState<NoteSuggestions> with WidgetsB
     WidgetsBinding.instance.addObserver(this);
     widget.controller.addListener(_changed);
     widget.focusNode.addListener(_changed);
+    // A deleted or edited entry can take a shown note with it. This also
+    // catches a field that lost focus by leaving the tree, which Flutter does
+    // without telling its listeners: search swaps its field for the
+    // selection bar, then deletes.
+    _entries = ref.read(repositoriesProvider).transactions.watchChanges().listen((_) {
+      _lookedUp = null;
+      _changed();
+    });
   }
 
   @override
@@ -71,6 +80,7 @@ class _NoteSuggestionsState extends ConsumerState<NoteSuggestions> with WidgetsB
   @override
   void dispose() {
     _wait?.cancel();
+    _entries.cancel();
     WidgetsBinding.instance.removeObserver(this);
     widget.controller.removeListener(_changed);
     widget.focusNode.removeListener(_changed);

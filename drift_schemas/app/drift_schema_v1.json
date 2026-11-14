@@ -79,26 +79,7 @@
             "customConstraints": null,
             "default_dart": "const CustomExpression('\\'asset\\'')",
             "default_client_dart": null,
-            "dsl_features": [
-              {
-                "check": {
-                  "dart_expression": {
-                    "elements": [
-                      {
-                        "lexeme": "type",
-                        "tag": "type"
-                      },
-                      ".isIn(",
-                      {
-                        "lexeme": "groupTypes",
-                        "import_uri": "package:wealthtracker/data/db/tables.dart"
-                      },
-                      ")"
-                    ]
-                  }
-                }
-              }
-            ]
+            "dsl_features": []
           }
         ],
         "is_virtual": false,
@@ -300,26 +281,7 @@
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": [
-              {
-                "check": {
-                  "dart_expression": {
-                    "elements": [
-                      {
-                        "lexeme": "type",
-                        "tag": "type"
-                      },
-                      ".isIn(",
-                      {
-                        "lexeme": "categoryTypes",
-                        "import_uri": "package:wealthtracker/data/db/tables.dart"
-                      },
-                      ")"
-                    ]
-                  }
-                }
-              }
-            ]
+            "dsl_features": []
           },
           {
             "name": "is_deleted",
@@ -406,26 +368,7 @@
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": [
-              {
-                "check": {
-                  "dart_expression": {
-                    "elements": [
-                      {
-                        "lexeme": "type",
-                        "tag": "type"
-                      },
-                      ".isIn(",
-                      {
-                        "lexeme": "transactionTypes",
-                        "import_uri": "package:wealthtracker/data/db/tables.dart"
-                      },
-                      ")"
-                    ]
-                  }
-                }
-              }
-            ]
+            "dsl_features": []
           },
           {
             "name": "amount",
@@ -523,26 +466,7 @@
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": [
-              {
-                "check": {
-                  "dart_expression": {
-                    "elements": [
-                      {
-                        "lexeme": "frequency",
-                        "tag": "frequency"
-                      },
-                      ".isIn(",
-                      {
-                        "lexeme": "frequencies",
-                        "import_uri": "package:wealthtracker/data/db/tables.dart"
-                      },
-                      ")"
-                    ]
-                  }
-                }
-              }
-            ]
+            "dsl_features": []
           },
           {
             "name": "interval",
@@ -704,26 +628,7 @@
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": [
-              {
-                "check": {
-                  "dart_expression": {
-                    "elements": [
-                      {
-                        "lexeme": "type",
-                        "tag": "type"
-                      },
-                      ".isIn(",
-                      {
-                        "lexeme": "transactionTypes",
-                        "import_uri": "package:wealthtracker/data/db/tables.dart"
-                      },
-                      ")"
-                    ]
-                  }
-                }
-              }
-            ]
+            "dsl_features": []
           },
           {
             "name": "amount",
@@ -733,36 +638,7 @@
             "customConstraints": null,
             "default_dart": null,
             "default_client_dart": null,
-            "dsl_features": [
-              {
-                "check": {
-                  "dart_expression": {
-                    "elements": [
-                      {
-                        "lexeme": "BooleanExpressionOperators",
-                        "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
-                      },
-                      "(",
-                      {
-                        "lexeme": "type",
-                        "tag": "type"
-                      },
-                      ".equals('transfer')).not() | ",
-                      {
-                        "lexeme": "ComparableExpr",
-                        "import_uri": "package:drift/src/runtime/query_builder/query_builder.dart"
-                      },
-                      "(",
-                      {
-                        "lexeme": "amount",
-                        "tag": "amount"
-                      },
-                      ").isBiggerOrEqualValue(0)"
-                    ]
-                  }
-                }
-              }
-            ]
+            "dsl_features": []
           },
           {
             "name": "asset_id",
@@ -1048,7 +924,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"asset_group\" (\"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" TEXT NOT NULL, \"sort_order\" INTEGER NOT NULL DEFAULT 0, \"type\" TEXT NOT NULL DEFAULT 'asset' CHECK(\"type\" IN ('asset', 'liability')));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"asset_group\" (\"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" TEXT NOT NULL, \"sort_order\" INTEGER NOT NULL DEFAULT 0, \"type\" TEXT NOT NULL DEFAULT 'asset');"
         }
       ]
     },
@@ -1066,7 +942,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"category\" (\"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" TEXT NOT NULL, \"sort_order\" INTEGER NOT NULL DEFAULT 0, \"type\" TEXT NOT NULL CHECK(\"type\" IN ('income', 'expense')), \"is_deleted\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_deleted\" IN (0, 1)));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"category\" (\"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"name\" TEXT NOT NULL, \"sort_order\" INTEGER NOT NULL DEFAULT 0, \"type\" TEXT NOT NULL, \"is_deleted\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_deleted\" IN (0, 1)));"
         }
       ]
     },
@@ -1075,7 +951,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"recurring_rule\" (\"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"note\" TEXT NULL, \"type\" TEXT NOT NULL CHECK(\"type\" IN ('income', 'expense', 'transfer')), \"amount\" INTEGER NOT NULL, \"asset_id\" INTEGER NOT NULL REFERENCES asset (id), \"to_asset_id\" INTEGER NULL REFERENCES asset (id), \"category_id\" INTEGER NULL REFERENCES category (id), \"frequency\" TEXT NOT NULL CHECK(\"frequency\" IN ('daily', 'weekly', 'monthly', 'yearly')), \"interval\" INTEGER NOT NULL DEFAULT 1, \"start_date\" TEXT NOT NULL, \"end_date\" TEXT NULL, \"next_date\" TEXT NOT NULL, \"is_active\" INTEGER NOT NULL DEFAULT 1 CHECK (\"is_active\" IN (0, 1)), \"is_deleted\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_deleted\" IN (0, 1)));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"recurring_rule\" (\"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"note\" TEXT NULL, \"type\" TEXT NOT NULL, \"amount\" INTEGER NOT NULL, \"asset_id\" INTEGER NOT NULL REFERENCES asset (id), \"to_asset_id\" INTEGER NULL REFERENCES asset (id), \"category_id\" INTEGER NULL REFERENCES category (id), \"frequency\" TEXT NOT NULL, \"interval\" INTEGER NOT NULL DEFAULT 1, \"start_date\" TEXT NOT NULL, \"end_date\" TEXT NULL, \"next_date\" TEXT NOT NULL, \"is_active\" INTEGER NOT NULL DEFAULT 1 CHECK (\"is_active\" IN (0, 1)), \"is_deleted\" INTEGER NOT NULL DEFAULT 0 CHECK (\"is_deleted\" IN (0, 1)));"
         }
       ]
     },
@@ -1084,7 +960,7 @@
       "sql": [
         {
           "dialect": "sqlite",
-          "sql": "CREATE TABLE IF NOT EXISTS \"transaction\" (\"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"note\" TEXT NULL, \"time\" INTEGER NOT NULL, \"date\" TEXT NOT NULL, \"type\" TEXT NOT NULL CHECK(\"type\" IN ('income', 'expense', 'transfer')), \"amount\" INTEGER NOT NULL CHECK(NOT (\"type\" = 'transfer') OR \"amount\" >= 0), \"asset_id\" INTEGER NOT NULL REFERENCES asset (id), \"to_asset_id\" INTEGER NULL REFERENCES asset (id), \"category_id\" INTEGER NULL REFERENCES category (id), \"recurring_rule_id\" INTEGER NULL REFERENCES recurring_rule (id), \"parent_id\" INTEGER NULL REFERENCES \"transaction\" (id) ON DELETE CASCADE, UNIQUE (\"recurring_rule_id\", \"date\"), UNIQUE (\"parent_id\"));"
+          "sql": "CREATE TABLE IF NOT EXISTS \"transaction\" (\"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"id\" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, \"note\" TEXT NULL, \"time\" INTEGER NOT NULL, \"date\" TEXT NOT NULL, \"type\" TEXT NOT NULL, \"amount\" INTEGER NOT NULL, \"asset_id\" INTEGER NOT NULL REFERENCES asset (id), \"to_asset_id\" INTEGER NULL REFERENCES asset (id), \"category_id\" INTEGER NULL REFERENCES category (id), \"recurring_rule_id\" INTEGER NULL REFERENCES recurring_rule (id), \"parent_id\" INTEGER NULL REFERENCES \"transaction\" (id) ON DELETE CASCADE, UNIQUE (\"recurring_rule_id\", \"date\"), UNIQUE (\"parent_id\"));"
         }
       ]
     },

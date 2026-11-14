@@ -67,9 +67,9 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   _PadField? _pad;
   Frequency? _repeat;
   String _padText = '';
-  // The pad types a magnitude; the sign is kept apart so "-" can be toggled
-  // before or after the digits.
-  late bool _negative = _draft.amount < 0;
+  // The pad types a magnitude; the sign of the box it types into is kept
+  // apart so "-" can be toggled before or after the digits.
+  bool _negative = false;
   // Fee and repeat are rarely needed, so they start folded away unless the
   // entry has a fee.
   late bool _showMore = _draft.hasFee;
@@ -90,9 +90,11 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   void _openPad(_PadField field) {
     FocusScope.of(context).unfocus();
     final money = ref.read(moneyFormatProvider);
+    final value = field == _PadField.fee ? _draft.fee : _draft.amount;
     setState(() {
       _pad = field;
-      _padText = money.editText(field == _PadField.fee ? _draft.fee : _draft.amount.abs());
+      _negative = value < 0;
+      _padText = money.editText(value.abs());
     });
   }
 
@@ -104,36 +106,21 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       context,
       start: field == _PadField.fee ? _draft.fee : _draft.amount,
       money: ref.read(moneyFormatProvider),
-      allowNegative: _canBeNegative(field),
     );
     if (result == null || !mounted) return;
-    if (field == _PadField.fee) {
-      setState(() => _draft = _draft.withFee(result));
-      return;
-    }
-    setState(() {
-      _negative = result < 0;
-      _draft = _draft.withAmount(result);
-    });
+    setState(() => _draft = field == _PadField.fee ? _draft.withFee(result) : _draft.withAmount(result));
   }
-
-  bool _canBeNegative(_PadField? field) => field == _PadField.amount && !_draft.isTransfer;
 
   void _onPadKey(String key) {
     final money = ref.read(moneyFormatProvider);
-    if (key == signKey) {
-      if (!_canBeNegative(_pad)) return;
-      setState(() {
-        _negative = !_negative;
-        _draft = _draft.withAmount(-_draft.amount);
-      });
-      return;
-    }
-    final text = padInput(_padText, key, decimals: money.decimals);
+    final text = key == signKey ? _padText : padInput(_padText, key, decimals: money.decimals);
+    final negative = key == signKey ? !_negative : _negative;
     final value = money.parse(text) ?? 0;
+    final signed = negative ? -value : value;
     setState(() {
       _padText = text;
-      _draft = _pad == _PadField.fee ? _draft.withFee(value) : _draft.withAmount(_negative ? -value : value);
+      _negative = negative;
+      _draft = _pad == _PadField.fee ? _draft.withFee(signed) : _draft.withAmount(signed);
     });
   }
 
@@ -176,10 +163,6 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     }
     if (_repeat != null && _draft.amount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('A repeating entry needs an amount')));
-      return;
-    }
-    if (_repeat != null && _draft.amount < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("A repeating entry can't be negative")));
       return;
     }
     // A rule repeats one amount, so a fee would be left behind after the first time.
@@ -259,7 +242,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
         ? '${_negative ? '-' : ''}${_padText.isEmpty ? '0' : _padText}'
         : money.format(_draft.amount, withSymbol: false);
     final feeText = _pad == _PadField.fee
-        ? (_padText.isEmpty ? '0' : _padText)
+        ? '${_negative ? '-' : ''}${_padText.isEmpty ? '0' : _padText}'
         : money.format(_draft.fee, withSymbol: false);
 
     return Scaffold(
@@ -289,13 +272,7 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                 ButtonSegment(value: TransactionType.transfer, label: Text('Transfer')),
               ],
               selected: {_draft.type},
-              onSelectionChanged: (s) => setState(() {
-                _draft = _draft.withType(s.single);
-                if (_draft.isTransfer && _negative) {
-                  _negative = false;
-                  _draft = _draft.withAmount(-_draft.amount);
-                }
-              }),
+              onSelectionChanged: (s) => setState(() => _draft = _draft.withType(s.single)),
             ),
             const SizedBox(height: 12),
             Row(
@@ -410,7 +387,6 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                 onKey: _onPadKey,
                 onDone: () => setState(() => _pad = null),
                 onCalculator: _openCalculator,
-                allowNegative: _canBeNegative(_pad),
               ),
             ),
           BottomActionButton(label: 'Save', onPressed: _saving ? null : _save),

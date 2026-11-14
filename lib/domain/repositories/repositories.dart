@@ -87,6 +87,12 @@ abstract interface class TransactionRepository {
 
   /// Deletes the entry and its fee.
   Future<void> delete(int id);
+
+  /// Deletes the entries and their fees in one database transaction.
+  Future<void> deleteAll(Set<int> ids);
+
+  /// How many rows [deleteAll] would remove for [ids]: the entries and their fees.
+  Future<int> countWithFees(Set<int> ids);
   Future<Transaction?> byId(int id);
   Future<Transaction?> feeOf(int parentId);
 
@@ -108,6 +114,9 @@ abstract interface class TransactionRepository {
   /// that does, ignoring case. Notes used with [categoryId] come first, then
   /// the most used, then the most recent. A note equal to [text] is left out.
   Future<List<String>> noteSuggestions({String text = '', int? categoryId, required DateTime since, int limit = 8});
+
+  /// Fires after entries are added, changed or deleted. Runs no query.
+  Stream<void> watchChanges();
 }
 
 abstract interface class RecurringRuleRepository {

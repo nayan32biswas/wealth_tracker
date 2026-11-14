@@ -338,7 +338,6 @@ class DriftBackupService implements BackupService {
     }
     if (type == null) return (null, 'type must be income, expense or transfer');
     if (amount == null) return (null, 'amount is not a valid number');
-    if (type == TransactionType.transfer && amount < 0) return (null, "a transfer can't be negative");
     if (account.isEmpty) return (null, 'account is missing');
     if (type == TransactionType.transfer && toAccount.isEmpty) return (null, 'a transfer needs to_account');
     if (type == TransactionType.transfer && toAccount == account) {

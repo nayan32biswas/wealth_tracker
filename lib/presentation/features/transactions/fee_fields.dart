@@ -66,7 +66,7 @@ class FeeFields extends ConsumerWidget {
         if (draft.hasFee) ...[
           const SizedBox(height: 8),
           PadValue(label: 'Fee or tax', text: text, active: active, onTap: onTap),
-          if (draft.fee > 0)
+          if (draft.fee != 0)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
               child: Text(effect, style: Theme.of(context).textTheme.bodySmall),

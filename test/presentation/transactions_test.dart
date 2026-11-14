@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wealthtracker/data/repositories/drift_repositories.dart';
 import 'package:wealthtracker/domain/models/enums.dart';
 import 'package:wealthtracker/domain/models/transactions.dart';
+import 'package:wealthtracker/presentation/features/accounts/accounts_screen.dart';
 import 'package:wealthtracker/presentation/features/transactions/search_screen.dart';
 import 'package:wealthtracker/presentation/features/transactions/transactions_screen.dart';
 import 'package:wealthtracker/presentation/widgets/calculator.dart';
@@ -152,16 +153,19 @@ void main() {
         expect((await saved(tester, app.repos)).single.amount, -3000);
       });
 
-      testWidgets('a transfer cannot come out negative', (tester) async {
-        await pumpApp(tester);
+      testWidgets('a transfer can come out negative too', (tester) async {
+        final app = await pumpApp(tester);
         await openNewTransaction(tester);
+        await pickAccount(tester, 'Bank Account');
         await tapAndSettle(tester, find.text('Transfer'));
+        await tapAndSettle(tester, find.widgetWithText(PickField<int>, 'To'));
+        await tapAndSettle(tester, find.text('Cash').last);
         await openFor(tester, 'Amount');
         await press(tester, ['5', '0', '−', '8', '0']);
-
-        expect(find.text("Can't be negative"), findsOneWidget);
         await tapAndSettle(tester, find.text('Done'));
-        expect(find.byType(CalculatorScreen), findsOneWidget);
+        await tapAndSettle(tester, find.text('Save'));
+
+        expect((await saved(tester, app.repos)).single.amount, -3000);
       });
 
       testWidgets('every key fits on a short landscape screen', (tester) async {
@@ -206,9 +210,9 @@ void main() {
         await tapAndSettle(tester, find.widgetWithText(InputDecorator, 'Amount'));
 
         const rows = [
-          ['1', '2', '3', '+/-'],
-          ['4', '5', '6', 'Calculator'],
-          ['7', '8', '9', 'Backspace'],
+          ['1', '2', '3', 'Backspace'],
+          ['4', '5', '6', '+/-'],
+          ['7', '8', '9', 'Calculator'],
           ['00', '0', '.', 'Done'],
         ];
         for (final row in rows) {
@@ -259,12 +263,24 @@ void main() {
         expect(find.text('-5'), findsOneWidget);
       });
 
-      testWidgets('+/- is greyed out for a transfer', (tester) async {
-        await pumpApp(tester);
+      testWidgets('+/- makes a transfer and its fee negative', (tester) async {
+        final app = await pumpApp(tester);
         await openNewTransaction(tester);
+        await pickAccount(tester, 'Bank Account');
         await tapAndSettle(tester, find.text('Transfer'));
-        await tapAndSettle(tester, find.widgetWithText(InputDecorator, 'Amount'));
-        expect(enabled(tester, '+/-'), isFalse);
+        await tapAndSettle(tester, find.widgetWithText(PickField<int>, 'To'));
+        await tapAndSettle(tester, find.text('Cash').last);
+        await typeOnPad(tester, 'Amount', ['5', '0', '+/-']);
+        await showMoreOptions(tester);
+        await tapAndSettle(tester, find.text('Add a fee or tax'));
+        await typeOnPad(tester, 'Fee or tax', ['+/-', '5']);
+        await tapAndSettle(tester, find.widgetWithText(PickField<int>, 'Fee category'));
+        await tapAndSettle(tester, find.text('Bank Charges').last);
+        await tapAndSettle(tester, find.text('Save'));
+
+        final rows = await saved(tester, app.repos);
+        expect(rows.singleWhere((t) => t.type == TransactionType.transfer).amount, -5000);
+        expect(rows.singleWhere((t) => t.isFee).amount, -500);
       });
     });
 
@@ -707,6 +723,32 @@ void main() {
       expect(at('Cash').dy, closeTo(at('৳300.00').dy, 0.5));
     });
 
+    testWidgets('a transfer shows its from account first and its to account where the category goes', (tester) async {
+      await pumpApp(
+        tester,
+        arrange: (repos) async {
+          await repos.transactions.save(
+            Transaction(
+              id: 0,
+              type: TransactionType.transfer,
+              amount: 50000,
+              assetId: await idOfAsset(repos, 'Bank Account'),
+              toAssetId: await idOfAsset(repos, 'Cash'),
+              note: 'ATM',
+              dateTime: DateTime(2026, 9, 5, 10),
+            ),
+          );
+        },
+      );
+      await openTab(tester, 'Activity');
+
+      final row = find.ancestor(of: find.text('ATM'), matching: find.byType(TransactionTile));
+      Offset at(String text) => tester.getCenter(find.descendant(of: row, matching: find.text(text)));
+      expect(at('Bank Account').dx, lessThan(at('→ Cash').dx));
+      expect(at('ATM').dy, greaterThan(at('→ Cash').dy));
+      expect(find.descendant(of: row, matching: find.text('Transfer')), findsNothing);
+    });
+
     testWidgets('long names and huge amounts stay on one line without overflowing', (tester) async {
       await pumpApp(
         tester,
@@ -956,6 +998,42 @@ void main() {
       expect(find.widgetWithText(TextField, 'CNG rickshaw'), findsOneWidget);
       expect(find.text('CNG rickshaw'), findsNWidgets(2));
       expect(find.text('Lunch'), findsNothing);
+    });
+
+    testWidgets('a focused field looks its notes up again when entries change', (tester) async {
+      final app = await pumpApp(tester, arrange: usedNotes);
+      await openTab(tester, 'Activity');
+      await tapAndSettle(tester, find.byTooltip('Search'));
+      await tester.enterText(find.byType(TextField), 'ric');
+      await waitForLookup(tester);
+      expect(chips(tester), ['Rickshaw', 'CNG rickshaw']);
+
+      final cng = (await saved(tester, app.repos)).firstWhere((t) => t.note == 'CNG rickshaw');
+      await tester.runAsync(() => app.repos.transactions.delete(cng.id));
+      await waitForLookup(tester);
+
+      expect(chips(tester), ['Rickshaw']);
+    });
+
+    // The selection bar takes the search field out of the tree, and Flutter
+    // drops its focus without telling the suggestions.
+    testWidgets('search drops the suggestions when the matches are deleted', (tester) async {
+      await pumpApp(tester, arrange: usedNotes);
+      await openTab(tester, 'Activity');
+      await tapAndSettle(tester, find.byTooltip('Search'));
+      await tester.enterText(find.byType(TextField), 'ric');
+      await waitForLookup(tester);
+      expect(chips(tester), ['Rickshaw', 'CNG rickshaw']);
+
+      await tester.longPress(find.byType(TransactionTile).first);
+      await tester.pumpAndSettle();
+      await tapAndSettle(tester, find.byTooltip('Select all'));
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Delete'));
+      await waitForLookup(tester);
+
+      expect(find.text('No matches'), findsOneWidget);
+      expect(find.byType(ActionChip), findsNothing);
     });
   });
 
@@ -1332,6 +1410,250 @@ void main() {
       expect(food.height - block.height, closeTo(transport.height - transportText.height, 0.5));
       expect(food.height - block.height, lessThanOrEqualTo(20));
       expect(food.height - block.height, greaterThanOrEqualTo(12));
+    });
+  });
+
+  group('selecting many', () {
+    Future<void> entries(DriftRepositories repos) async {
+      final cash = await idOfAsset(repos, 'Cash');
+      final bank = await idOfAsset(repos, 'Bank Account');
+      final tds = await repos.categories.add('TDS', CategoryType.expense);
+      Future<void> add(String note, int day, {TransactionType type = TransactionType.expense, Fee? fee}) async =>
+          repos.transactions.save(
+            Transaction(
+              id: 0,
+              type: type,
+              amount: 10000,
+              assetId: type == TransactionType.income ? bank : cash,
+              categoryId: await idOfCategory(repos, type == TransactionType.income ? 'Salary' : 'Food'),
+              note: note,
+              dateTime: DateTime(2026, 9, day, 12),
+            ),
+            fee: fee,
+          );
+      await add('Lunch', 10);
+      await add('Dinner', 11);
+      await add('Snack', 12);
+      await add(
+        'Pay',
+        15,
+        type: TransactionType.income,
+        fee: Fee(amount: 500, categoryId: tds),
+      );
+    }
+
+    Finder row(String note) => find.ancestor(of: find.text(note), matching: find.byType(TransactionTile)).first;
+
+    Future<TestApp> openActivity(WidgetTester tester) async {
+      final app = await pumpApp(tester, arrange: entries);
+      await openTab(tester, 'Activity');
+      return app;
+    }
+
+    Future<void> longPress(WidgetTester tester, String note) async {
+      await tester.longPress(row(note));
+      await tester.pumpAndSettle();
+    }
+
+    Future<List<String?>> notesLeft(WidgetTester tester, TestApp app) async =>
+        [for (final t in await saved(tester, app.repos)) t.note]..sort();
+
+    testWidgets('long-press starts a selection; taps add rows; Delete removes only those', (tester) async {
+      final app = await openActivity(tester);
+
+      await longPress(tester, 'Lunch');
+      expect(find.text('1 selected'), findsOneWidget);
+      expect(find.byTooltip('Add transaction'), findsNothing);
+
+      await tapAndSettle(tester, row('Dinner'));
+      expect(find.text('2 selected'), findsOneWidget);
+      expect(find.text('Save'), findsNothing, reason: 'a tap while selecting picks the row, not opens it');
+
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      expect(find.text('Delete 2 transactions?'), findsOneWidget);
+      await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Delete'));
+
+      expect(await notesLeft(tester, app), ['Pay', 'Pay', 'Snack']);
+      expect(find.textContaining('selected'), findsNothing);
+      expect(find.byTooltip('Add transaction'), findsOneWidget);
+    });
+
+    testWidgets('closing the confirm keeps everything and the selection', (tester) async {
+      final app = await openActivity(tester);
+      await longPress(tester, 'Lunch');
+
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      await tapAndSettle(tester, find.byTooltip('Close'));
+
+      expect(await saved(tester, app.repos), hasLength(5));
+      expect(find.text('1 selected'), findsOneWidget);
+    });
+
+    testWidgets('untapping the last row, ✕ or Back ends the selection without leaving', (tester) async {
+      await openActivity(tester);
+
+      await longPress(tester, 'Lunch');
+      await tapAndSettle(tester, row('Lunch'));
+      expect(find.textContaining('selected'), findsNothing);
+
+      await longPress(tester, 'Lunch');
+      await tapAndSettle(tester, find.byTooltip('Clear selection'));
+      expect(find.textContaining('selected'), findsNothing);
+
+      await longPress(tester, 'Lunch');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.textContaining('selected'), findsNothing);
+      expect(find.byTooltip('Search'), findsOneWidget);
+
+      // With nothing picked, a tap opens the entry again.
+      await tapAndSettle(tester, row('Lunch'));
+      expect(find.text('Save'), findsOneWidget);
+    });
+
+    testWidgets('a fee row stands for its entry: picking it picks both and deletes both', (tester) async {
+      final app = await openActivity(tester);
+
+      final fee = find.ancestor(of: find.text('TDS'), matching: find.byType(TransactionTile));
+      await tester.longPress(fee);
+      await tester.pumpAndSettle();
+      expect(find.text('1 selected'), findsOneWidget);
+
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Delete'));
+
+      expect(await notesLeft(tester, app), ['Dinner', 'Lunch', 'Snack']);
+    });
+
+    Future<void> searchCategory(WidgetTester tester, String name) async {
+      await tapAndSettle(tester, find.byTooltip('Search'));
+      await tapAndSettle(tester, find.text('Filters'));
+      await tapAndSettle(tester, find.text('Categories'));
+      // The dialog list is long and builds lazily.
+      final box = find.widgetWithText(CheckboxListTile, name);
+      for (var i = 0; i < 10 && box.evaluate().isEmpty; i++) {
+        await tester.drag(find.byType(CheckboxListTile).first, const Offset(0, -300));
+        await tester.pumpAndSettle();
+      }
+      await tapAndSettle(tester, box);
+      await tapAndSettle(tester, find.text('Done'));
+      await tapAndSettle(tester, find.text('Filters (1)'));
+    }
+
+    Future<void> pickRow(WidgetTester tester, String text) async {
+      final tile = find.ancestor(of: find.text(text), matching: find.byType(TransactionTile));
+      expect(tile, findsOneWidget);
+      await tester.longPress(tile);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a fee found without its entry: the confirm counts the entry and says it is not listed', (
+      tester,
+    ) async {
+      final app = await openActivity(tester);
+      await searchCategory(tester, 'TDS');
+      expect(find.text('Salary'), findsNothing, reason: 'only the fee matches');
+
+      await pickRow(tester, 'TDS');
+      expect(find.text('1 selected'), findsOneWidget);
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      expect(find.text('Delete 2 transactions?'), findsOneWidget);
+      expect(find.text('1 of them is not in this list: 1 entry whose fee you picked.'), findsOneWidget);
+
+      await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Delete'));
+      expect(await notesLeft(tester, app), ['Dinner', 'Lunch', 'Snack']);
+    });
+
+    testWidgets('an entry found without its fee: the confirm counts the fee and says it is not listed', (tester) async {
+      final app = await openActivity(tester);
+      await searchCategory(tester, 'Salary');
+      expect(find.text('TDS'), findsNothing, reason: 'only the entry matches');
+
+      await pickRow(tester, 'Salary');
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      expect(find.text('Delete 2 transactions?'), findsOneWidget);
+      expect(find.text('1 of them is not in this list: 1 fee linked to an entry you picked.'), findsOneWidget);
+
+      await tapAndSettle(tester, find.byTooltip('Close'));
+      expect(await saved(tester, app.repos), hasLength(5));
+    });
+
+    testWidgets('with every row in view, the confirm counts entries and fees and adds no note', (tester) async {
+      await openActivity(tester);
+      await pickRow(tester, 'TDS');
+      await tapAndSettle(tester, row('Lunch'));
+
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      expect(find.text('Delete 3 transactions?'), findsOneWidget);
+      expect(find.textContaining('not in this list'), findsNothing);
+    });
+
+    testWidgets('Select all picks every entry in the list', (tester) async {
+      final app = await openActivity(tester);
+      await longPress(tester, 'Lunch');
+
+      await tapAndSettle(tester, find.byTooltip('Select all'));
+      expect(find.text('4 selected'), findsOneWidget);
+
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Delete'));
+      expect(await saved(tester, app.repos), isEmpty);
+    });
+
+    testWidgets('in search, Select all deletes only the matches', (tester) async {
+      final app = await openActivity(tester);
+      await tapAndSettle(tester, find.byTooltip('Search'));
+      await tester.enterText(find.byType(TextField), 'n');
+      await tester.pumpAndSettle();
+      expect(find.text('Pay'), findsNothing);
+
+      await longPress(tester, 'Lunch');
+      await tapAndSettle(tester, find.byTooltip('Select all'));
+      expect(find.text('3 selected'), findsOneWidget);
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Delete'));
+
+      expect(await notesLeft(tester, app), ['Pay', 'Pay']);
+      expect(find.text('No matches'), findsOneWidget);
+      expect(find.byType(TextField), findsOneWidget, reason: 'the search bar is back');
+    });
+
+    testWidgets("an account's page deletes the picked rows too", (tester) async {
+      final app = await pumpApp(tester, arrange: entries);
+      await openTab(tester, 'Accounts');
+      await tapAndSettle(tester, find.widgetWithText(ListTile, 'Cash'));
+
+      await longPress(tester, 'Snack');
+      await tapAndSettle(tester, find.byTooltip('Delete'));
+      await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Delete'));
+
+      expect(await notesLeft(tester, app), ['Dinner', 'Lunch', 'Pay', 'Pay']);
+      expect(find.byType(AccountDetailScreen), findsOneWidget);
+    });
+
+    testWidgets('a picked row that leaves the list is let go and does not come back picked', (tester) async {
+      await pumpApp(tester, arrange: entries);
+      await openTab(tester, 'Accounts');
+      await tapAndSettle(tester, find.widgetWithText(ListTile, 'Cash'));
+
+      await longPress(tester, 'Snack');
+      expect(find.text('1 selected'), findsOneWidget);
+
+      await tapAndSettle(tester, find.byTooltip('Next'));
+      expect(find.textContaining('selected'), findsNothing);
+
+      await tapAndSettle(tester, find.byTooltip('Previous'));
+      expect(find.text('Snack'), findsOneWidget);
+      expect(find.textContaining('selected'), findsNothing);
+    });
+
+    testWidgets('the calendar does not pick rows', (tester) async {
+      await openActivity(tester);
+      await choosePeriodKind(tester, 'Calendar');
+      await tapAndSettle(tester, find.byKey(const ValueKey('day-2026-09-10')));
+
+      await longPress(tester, 'Lunch');
+      expect(find.textContaining('selected'), findsNothing);
     });
   });
 }

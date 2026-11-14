@@ -140,7 +140,7 @@ void main() {
     await pick(tester, 'To', 'Cash');
     await typeAmount(tester, ['1', '0', '0', '0']);
     await tap(tester, find.text('Save'));
-    await waitFor(tester, find.text('Bank Account → Cash'));
+    await waitFor(tester, find.text('→ Cash'));
     expect(await balances(), containsPair('Cash', 90100));
     expect(await balances(), containsPair('Bank Account', -100000));
 

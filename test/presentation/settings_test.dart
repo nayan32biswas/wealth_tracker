@@ -291,6 +291,31 @@ void main() {
       expect((await tester.runAsync(() => app.repos.assets.watchArchived().first))!.single.id, wallet);
     });
 
+    testWidgets('deleting an unused account asks first, naming its opening balance', (tester) async {
+      final app = await pumpApp(
+        tester,
+        arrange: (repos) async {
+          final bank = (await repos.groups.all()).firstWhere((g) => g.name == 'Bank').id;
+          await repos.assets.add('Old savings', bank, initialBalance: 5000000);
+        },
+      );
+      Future<List<String>> names() async => [for (final a in (await tester.runAsync(app.repos.assets.all))!) a.name];
+      await openSettingsItem(tester, 'Accounts and groups');
+      await tapAndSettle(tester, find.text('Bank'));
+
+      await tapAndSettle(tester, find.widgetWithText(ListTile, 'Old savings'));
+      await tapAndSettle(tester, find.text('Delete'));
+      expect(find.text('Delete Old savings?'), findsOneWidget);
+      expect(find.text('Its opening balance of ৳50,000.00 goes with it. This cannot be undone.'), findsOneWidget);
+      await tapAndSettle(tester, find.byTooltip('Close'));
+      expect(await names(), contains('Old savings'));
+
+      await tapAndSettle(tester, find.widgetWithText(ListTile, 'Old savings'));
+      await tapAndSettle(tester, find.text('Delete'));
+      await tapAndSettle(tester, find.widgetWithText(FilledButton, 'Delete'));
+      expect(await names(), isNot(contains('Old savings')));
+    });
+
     testWidgets('a group with an archived account cannot be deleted', (tester) async {
       late int wallet;
       await pumpApp(
